@@ -1,0 +1,36 @@
+# Flower
+.flwr/
+*.flwr
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+dist/
+build/
+pytorchexample/__pycache__/
+
+# Data
+data/
+dataset/
+datasets/
+partitioners/
+*.csv
+*.parquet
+*.pth
+*.pt
+*.h5
+
+# Logs
+*.log
+results/
+
+# Config
+experiment_config.yaml
+
+# Temp files
+*~
+*.swp
+*.swo
