@@ -59,7 +59,7 @@ class LocalTrainingNormal(LocalTrainingStrategy):
 
 class LocalTrainingWithInversion(LocalTrainingStrategy):
     def train(self, msg: Message, context: Context, model: NN, trainloader, device):
-        num_local_batches = int(context.run_config["local_batches"])
+        num_local_batches = int(context.run_config["local-batches"])
         train_metadata = inv_train_fn(
            model,
            trainloader,

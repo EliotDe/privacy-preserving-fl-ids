@@ -9,3 +9,4 @@ class TrainProcessMetadata:
     X: torch.Tensor
     y: torch.Tensor
     train_loss: float
+    timestamps: int

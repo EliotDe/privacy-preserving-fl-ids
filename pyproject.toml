@@ -17,7 +17,7 @@ serverapp = "pytorchexample.server_app:app"
 clientapp = "pytorchexample.client_app:app"
 
 [tool.flwr.app.config]
-run-inversion = false
+run-inversion = true
 num-server-rounds = 1
 fraction-evaluate = 0.5
 learning-rate = 0.001
@@ -25,11 +25,15 @@ weight-decay = 0.0001
 local-epochs = 1
 local-batches = 1
 batch-size = 1
-shuffle = true
+shuffle = false
 epsilon = 7.5
 delta = 0.0001
 clipping_norm = 1
 sensitivity = 0.3
+attack-lr = 0.001
+attack-rounds = 300
+attack-reg = 0.0001
+seed = 2
 
 [tool.hatch.build.targets.wheel]
 packages = [ ".",]

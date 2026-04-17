@@ -18,10 +18,9 @@ app = ClientApp()
 #experiment_cfg = get_and_parse_config_yaml()
 
 
-#local_dp_obj = LocalDpMod(clipping_norm=1, sensitivity=0.3, epsilon=5.0, delta=0.0001)
-local_dp_obj = DynamicDpMod()
+#local_dp_obj = DynamicDpMod()
 
-@app.train(mods=[local_dp_obj])
+@app.train()#mods=[local_dp_obj])
 def train(msg: Message, context: Context):
     """Train the model on local data."""
     #global experiment_cfg

@@ -259,7 +259,6 @@ def train(net, trainloader, epochs, lr, weight_decay, device):
     return avg_trainloss
 
 
-##
 def inversion_train(net, trainloader, num_batches, epochs, lr, device):
     """
     When running Inversion Attack experiments, more control is needed over 
@@ -268,6 +267,7 @@ def inversion_train(net, trainloader, num_batches, epochs, lr, device):
     optimizer.
 
     """
+    #print(f"\n\ntraining learning rate: {lr}")
     net.to(device)
     criterion = torch.nn.CrossEntropyLoss().to(device)
     optimizer = torch.optim.SGD(net.parameters(), lr=lr)
@@ -275,15 +275,17 @@ def inversion_train(net, trainloader, num_batches, epochs, lr, device):
     
     all_inputs = []
     all_labels = []
+    timestamps = 0
     for i in range(epochs):
         running_loss = 0.0
         correct = 0
         total = 0
         epoch_inputs = []
         epoch_labels = []
+        loader_iter = iter(trainloader)
         for j in range(num_batches):
             # Get and track inputs and labels
-            inputs,labels = next(iter(trainloader))
+            inputs,labels = next(loader_iter)
             inputs = inputs.to(device)
             epoch_inputs.append(inputs)
             labels = labels.to(device)
@@ -302,18 +304,22 @@ def inversion_train(net, trainloader, num_batches, epochs, lr, device):
             total += labels.size(0)
             correct += (predicted==labels).sum().item()
 
-        print(f"epoch {i} loss: {running_loss/len(trainloader)} train_acc: {100*correct/total}") 
-        all_inputs.append(torch.cat(epoch_inputs,0))
-        all_labels.append(torch.cat(epoch_labels,0))
-    avg_trainloss = running_loss / len(trainloader)
+            timestamps += 1
+
+        print(f"epoch {i} loss: {running_loss/num_batches} train_acc: {100*correct/total}") 
+        if i==0:
+            all_inputs.append(torch.cat(epoch_inputs,0))
+            all_labels.append(torch.cat(epoch_labels,0))
+    avg_trainloss = running_loss / num_batches 
     X = torch.cat(all_inputs,0)
     y = torch.cat(all_labels,0)
     meta = TrainProcessMetadata(
             X_shape=X.shape,
             y_shape=y.shape,
-            X=X,
-            y=y,
-            train_loss=avg_trainloss
+            X=X.detach().cpu(),
+            y=y.detach().cpu(),
+            train_loss=avg_trainloss,
+            timestamps=timestamps
     )    
     return meta 
 
@@ -348,7 +354,7 @@ def test(net, testloader, device):
 
 
 def get_and_parse_config_yaml():
-    print(f"\n\n\n\n{os.getcwd()}\n\n\n\n")
+    #print(f"\n\n\n\n{os.getcwd()}\n\n\n\n")
     experiment_cfg = {}
     with open('experiment_config.yaml','r') as f:
         experiment_cfg = yaml.full_load(f)

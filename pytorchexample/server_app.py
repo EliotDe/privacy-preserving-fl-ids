@@ -35,6 +35,8 @@ def main(grid: Grid, context: Context) -> None:
     lr: float = context.run_config["learning-rate"]
     weight_decay: float = context.run_config["weight-decay"]
     batch_size: int = context.run_config["batch-size"]
+    seed: int = context.run_config["seed"]
+
 
     # Load global model
     global_model = NN()
@@ -47,13 +49,16 @@ def main(grid: Grid, context: Context) -> None:
     # Initialize FedAvg strategy
     #print(f"\n\n\nrun inversion attack config type: {type(experiment_cfg["inversion"]["run_inversion_attack"])}\n\n\n")
     if run_inversion_attack:
+        attack_lr = context.run_config["attack-lr"]
+        attack_rounds = context.run_config["attack-rounds"]
+        attack_reg = context.run_config["attack-reg"]
         strategy = CustomFedAvg(fraction_evaluate=fraction_evaluate)
 
         # Start strategy, run FedAvg for `num_rounds`
         result = strategy.start(
             grid=grid,
             initial_arrays=arrays,
-            train_config=ConfigRecord({"lr": lr, "weight_decay":weight_decay}),
+            train_config=ConfigRecord({"lr": lr, "weight_decay":weight_decay, "attack_lr": attack_lr, "attack_rounds": attack_rounds, "attack_reg": attack_reg, "seed": seed}),
             num_rounds=num_rounds,
             evaluate_fn=global_evaluate,
         )
