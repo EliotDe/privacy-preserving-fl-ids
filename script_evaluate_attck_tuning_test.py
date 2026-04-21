@@ -45,13 +45,13 @@ for _ in range(runs):
             cfg = toml.load(f)
 
 
-        cfg["tool"]["flwr"]["app"]["config"]["experiment-name"] = "tune-attack" 
+        cfg["tool"]["flwr"]["app"]["config"]["experiment-name"] = "tune-attack-test" 
         cfg["tool"]["flwr"]["app"]["config"]["run-inversion"] = True 
         cfg["tool"]["flwr"]["app"]["config"]["shuffle"] = False 
         cfg["tool"]["flwr"]["app"]["config"]["prox-mu"] = 0 
         cfg["tool"]["flwr"]["app"]["config"]["learning-rate"] = 0.001   # From Tuning
-        cfg["tool"]["flwr"]["app"]["config"]["batch-size"] = 1          # Ideal Inversion Conditions
-        cfg["tool"]["flwr"]["app"]["config"]["local-epochs"] = 1        # Ideal Inversion Conditions
+        cfg["tool"]["flwr"]["app"]["config"]["batch-size"] = 32         # Ideal Inversion Conditions
+        cfg["tool"]["flwr"]["app"]["config"]["local-epochs"] = 3        # Ideal Inversion Conditions
         cfg["tool"]["flwr"]["app"]["config"]["window-size"] = 20        # Ideal Inversion Conditions
         cfg["tool"]["flwr"]["app"]["config"]["attack-lr"] = lr
         cfg["tool"]["flwr"]["app"]["config"]["attack-rounds"] = rounds 

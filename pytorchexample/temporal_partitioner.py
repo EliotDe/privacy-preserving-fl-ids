@@ -9,6 +9,7 @@ from datasets import Dataset
 from .dirichlet_partitioner import DirichletPartitioner 
 from flwr_datasets.common.typing import NDArrayFloat
 from flwr_datasets.partitioner.partitioner import Partitioner
+from pytorchexample.data_utils import set_windows
 
 class TemporalPartitioner(Partitioner):
     """
@@ -42,24 +43,30 @@ class TemporalPartitioner(Partitioner):
             partition_by: str,
             window_size: int,
             alpha: int | float | list[float] | NDArrayFloat,
+            threshold_for_unrelated_s: int,
+            time_feature_name: str,
+            seed: int,
             min_partitions_size: int=10,
             num_clusters: int=0,
             delta_t: bool=True,
-            self_balancing: bool=True
+            self_balancing: bool=True,
             #*,
             #dirichlet_kwargs
     ) -> None:
         super().__init__()
-        self._inner = DirichletPartitioner(num_partitions=num_partitions, partition_by=partition_by, alpha=alpha, self_balancing=self_balancing)
+        self._inner = DirichletPartitioner(num_partitions=num_partitions, partition_by=partition_by, alpha=alpha, self_balancing=self_balancing,seed=seed)
         self._dataset: Dataset | None = None
         self._num_partitions = num_partitions
         self._min_partitions_size = min_partitions_size
         self._num_clusters = num_clusters
         #self._alpha: NDArrayFloat = self._initialize_alpha(alpha)
         self._partition_by = partition_by
+        self._time_feature_name = time_feature_name
+        self._threshold_for_unrelated_s = threshold_for_unrelated_s
         self._window_size = window_size
-        self._rng = np.random.default_rng()
         self._pid_to_indices = {}
+        self._seed = seed
+        self._rng = np.random.default_rng(seed=self._seed)  # NumPy random generator
 
 
     @property
@@ -74,25 +81,29 @@ class TemporalPartitioner(Partitioner):
 
 
     def _labeling_rule(self,df):
-        type_set = set(df)
-        if len(type_set) == 1 and "normal" in type_set:
-            return "normal"
-        else:
-            for t in type_set:
-                if t != "normal":
-                    return t
+        #type_set = set(df)
+        #if len(type_set) == 1 and "normal" in type_set:
+        #    return "normal"
+        #else:
+        #    for t in type_set:
+        #        if t != "normal":
+        #            return t
+        return df.iloc[-1]
 
 
     @dataset.setter
     def dataset(self, dataset: Dataset) -> None:
+        # Add window_id feature 
+        self._dataset = set_windows(dataset, self._window_size, self._threshold_for_unrelated_s, self._time_feature_name)
+
         # Ensure the dataset can be windowed:
-        dataset_len = dataset.num_rows
-        r = dataset_len % self._window_size
-        if r != 0:
-            dataset = dataset.select(range(dataset_len - r))
-        self._dataset = dataset
+        #dataset_len = dataset.num_rows
+        #r = dataset_len % self._window_size
+        #if r != 0:
+        #    dataset = dataset.select(range(dataset_len - r))
+        #self._dataset = dataset
         #processed_dataset = self._set_windows()
-        window_type_df = dataset.to_pandas().groupby("window_id")["type"].agg(self._labeling_rule).reset_index()
+        window_type_df = self._dataset.to_pandas().groupby("window_id")["type"].agg(self._labeling_rule).reset_index()
         window_dataset = Dataset.from_pandas(window_type_df)
 
         self._inner.dataset=window_dataset
@@ -106,35 +117,35 @@ class TemporalPartitioner(Partitioner):
             return self._dataset.select(self._pid_to_indices[pid])
         else:
             inner_pid_indices = self._inner.load_partition(pid)
-            for idx in inner_pid_indices.copy():
+            expanded = set()
+            for idx in inner_pid_indices:
                 start = idx*self._window_size
                 end = ((idx+1)*self._window_size) 
-                window_indices = [i for i in range(start,end)]
-                inner_pid_indices = list(set(inner_pid_indices) | set(window_indices)) # Union
+                expanded.update(range(start,end))
+                #window_indices = [i for i in range(start,end)]
+                #inner_pid_indices = list(set(inner_pid_indices) | set(window_indices)) # Union
+            indices = sorted(expanded)
 
-            return self._dataset.select(inner_pid_indices)
+            self._pid_to_indices[pid] = indices #sorted(inner_pid_indices)
+            return self._dataset.select(indices)#inner_pid_indices)
 
+"""
+    def _set_windows(self, dataset: Dataset, threshold_for_unrelated) -> Dataset:
+        # Convert dataset to dataframe
+        df = dataset.to_pandas()
+        df['delta_t'] = features.index.to_series().diff().dt.total_seconds()
+        df['window_id'] = np.arange(len(df)) // self._window_size 
+        final_window_id = len(df) // self._window_size
+        # Clip the final window if its not the correct size
+        count_final_window_id = df['window_id'].value_counts().get(final_window_id,0)
+        if count_final_window_id != self._window_size:
+            df = df[df['window_id']!=final_window_id]
+        # Remove windows that contain temporally unrelated data
+        delta_t_threshold = threshold_for_unrelated 
+        mask = df.groupby('window_id')['delta_t'].transform(
+                lambda x: x.max() < delta_t_threshold
+        )
+        df= df.loc[mask]
 
-
-    def _cluster(self) -> Dataset:
-        """
-        Feature-based clustering gets a measure of similar temporal patterns accross classes
-        """
-        pass
-
-
-    def _sort_and_add_delta_t(self) -> Dataset:
-        """
-        Partition windows by dirichlet distribution and introduce a delta_t parameter to indicate the difference between the start_ts of a window and end_ts of the previous window
-        """
-
-        pass
-
-    def _set_windows(self) -> Dataset:
-        #mask = (dataset.index % self._window_size == 0) 
-        #mask_series = pd.Series(mask,index=dataset.index)
-        #window_end_dataset = dataset[mask]
-        end_of_window_indices = [i for i in range(self._dataset.num_rows) if i%self._window_size == 0 and i != 0]
-        #for i in range(100):
-        #    print(end_of_window_indices[i])
-        return self._dataset.select(end_of_window_indices) 
+        return Dataset.from_pandas(df)
+"""

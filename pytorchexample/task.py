@@ -13,9 +13,10 @@ from torch.utils.data import Dataset,DataLoader
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.model_selection import StratifiedShuffleSplit, train_test_split
 from pytorchexample.train_process_metadata import TrainProcessMetadata
+from pytorchexample.data_utils import set_windows
 #from torchvision.transforms import Compose, Normalize, ToTensor
 
-WINDOW_SIZE = 20
+THRESHOLD_FOR_UNRELATED_S = 600   # At what difference in seconds do we consider two records temporally unrelated
 
 class CustomDataset(Dataset):
     def __init__(self,inputs,labels,window_size):
@@ -86,8 +87,9 @@ fitted = False
 
 def fit_global_transforms(dataset):
     df = dataset.to_pandas()
+    #print(f"====== FIT GLOBAL TRANSFORMS =====\n\t ----> df.head(): \n {df.head}")
     labels = df["type"]
-    features = df.drop(columns=["type","ts","label","window_id","delta_t"])
+    features = df.drop(columns=["type","ts","label"])#,"window_id","delta_t"])
     scaler.fit(features)
     le.fit(labels)
 
@@ -128,15 +130,18 @@ def labeling_rule(window_types):
                 return t
 
      
-def load_data(partition_id: int, num_partitions: int, batch_size: int):
+def load_data(partition_id: int, num_partitions: int, batch_size: int, window_size: int, seed: int, shuffle_train=True):
     # Only initialize `FederatedDataset` once
     global fds,partitioner,fitted
     if fds is None:
         partitioner = TemporalPartitioner(
                 num_partitions=num_partitions,
                 partition_by='type',
-                window_size=WINDOW_SIZE,
-                alpha=[1]*num_partitions        
+                window_size=window_size,
+                alpha=[1]*num_partitions,
+                threshold_for_unrelated_s = THRESHOLD_FOR_UNRELATED_S,
+                time_feature_name = 'ts',
+                seed=seed
         )
         data_files = "dataset/processed_network.csv" 
         dataset = load_dataset("csv", data_files=data_files, split="train")
@@ -167,9 +172,9 @@ def load_data(partition_id: int, num_partitions: int, batch_size: int):
     unique_classes, class_counts = np.unique(p_window_types['type'],return_counts=True)
 
     if class_counts.min() < 2:
-        train_windows, test_windows = train_test_split(p_window_types['window_id'])
+        train_windows, test_windows = train_test_split(p_window_types['window_id'],random_state=seed)
     else:
-        train_windows, test_windows = train_test_split(p_window_types['window_id'], stratify=p_window_types['type'])
+        train_windows, test_windows = train_test_split(p_window_types['window_id'], stratify=p_window_types['type'],random_state=seed)
 
 
     train_df = partition_df[partition_df['window_id'].isin(train_windows)]
@@ -193,27 +198,30 @@ def load_data(partition_id: int, num_partitions: int, batch_size: int):
     y_train = le.transform(y_train)
     y_test = le.transform(y_test)
 
-    train_ds = CustomDataset(pd.DataFrame(X_train,columns=feature_cols), y_train, window_size=WINDOW_SIZE)
-    test_ds = CustomDataset(pd.DataFrame(X_test,columns=feature_cols), y_test, window_size=WINDOW_SIZE)
+    train_ds = CustomDataset(pd.DataFrame(X_train,columns=feature_cols), y_train, window_size=window_size)
+    test_ds = CustomDataset(pd.DataFrame(X_test,columns=feature_cols), y_test, window_size=window_size)
 
-    trainloader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
+    trainloader = DataLoader(train_ds, batch_size=batch_size, shuffle=shuffle_train)
     testloader = DataLoader(test_ds, batch_size=batch_size)
 
     return trainloader,testloader
 
 
-def load_centralized_dataset():
+def load_centralized_dataset(window_size: int):
     """Load test set and return dataloader."""
     global fitted
 
     data_files = "dataset/processed_network.csv"
 
     dataset = load_dataset("csv", data_files=data_files, split="train")
+    #dataset = set_windows(dataset, window_size, THRESHOLD_FOR_UNRELATED_S, 'ts')
 
     if not fitted:
         fit_global_transforms(dataset)
         fitted=True
 
+    
+    dataset = set_windows(dataset, window_size, THRESHOLD_FOR_UNRELATED_S, 'ts')
     dataset = dataset.to_pandas()
     
     df_window_types = dataset.groupby("window_id")["type"].agg(labeling_rule).reset_index()
@@ -226,18 +234,25 @@ def load_centralized_dataset():
     y_test = test_df["type"]
     y_test = le.transform(y_test)
     
-    ds = CustomDataset(pd.DataFrame(X_test),y_test,window_size=WINDOW_SIZE)
+    ds = CustomDataset(pd.DataFrame(X_test),y_test,window_size=window_size)
 
     return DataLoader(ds, batch_size=32,shuffle=False)
 
 
-def train(net, trainloader, epochs, lr, weight_decay, device):
-    """Train the model on the training set."""
+def train(net, trainloader, epochs, lr, weight_decay, device, prox_mu=0, global_params=None):
+    """
+    Train the model on the training set.
+
+    - prox_mu: This is used in the FedProx aggregation scheme. By default it is 0. When prox_mu=0 the aggregation scheme is FedAvg.
+    """
     net.to(device)  # move model to GPU if available
     criterion = torch.nn.CrossEntropyLoss().to(device)
     optimizer = torch.optim.AdamW(net.parameters(),lr=lr,weight_decay=weight_decay)
     net.train()
-#
+
+    if global_params is not None:
+        global_params = [p.detach().to(device) for p in global_params]
+
     for i in range(epochs):
         running_loss = 0.0
         correct = 0
@@ -247,9 +262,17 @@ def train(net, trainloader, epochs, lr, weight_decay, device):
             labels=labels.to(device)
             optimizer.zero_grad()
             outputs = net(inputs)
+
             loss = criterion(outputs,labels)
+            # For FedProx
+            if global_params is not None and prox_mu != 0:
+                proximal_term = 0.0
+                for local_weights, global_weights in zip(net.parameters(),global_params):
+                    proximal_term += (local_weights - global_weights).norm(2)**2
+                    loss += (prox_mu/2) * proximal_term
             loss.backward()
             optimizer.step()
+
             running_loss += loss.item()
             _,predicted = outputs.max(1)
             total += labels.size(0)
@@ -259,12 +282,14 @@ def train(net, trainloader, epochs, lr, weight_decay, device):
     return avg_trainloss
 
 
-def inversion_train(net, trainloader, num_batches, epochs, lr, device):
+def inversion_train(net, trainloader, num_batches, epochs, lr, device, prox_mu=0, global_params=None):
     """
     When running Inversion Attack experiments, more control is needed over 
     the data being trained on and the optimization. This method provides 
     more control over the number of local batches and epochs and the
     optimizer.
+
+    - prox_mu: This is used in the FedProx aggregation scheme. By default it is 0. When prox_mu=0 the aggregation scheme is FedAvg.
 
     """
     #print(f"\n\ntraining learning rate: {lr}")
@@ -272,6 +297,9 @@ def inversion_train(net, trainloader, num_batches, epochs, lr, device):
     criterion = torch.nn.CrossEntropyLoss().to(device)
     optimizer = torch.optim.SGD(net.parameters(), lr=lr)
     net.train()
+
+    if global_params is not None:
+        global_params = [p.detach().to(device) for p in global_params]
     
     all_inputs = []
     all_labels = []
@@ -295,6 +323,14 @@ def inversion_train(net, trainloader, num_batches, epochs, lr, device):
             optimizer.zero_grad()
             outputs = net(inputs)
             loss = criterion(outputs,labels)
+
+            # For FedProx if using
+            if global_params is not None and prox_mu != 0:
+                proximal_term = 0.0
+                for local_weights, global_weights in zip(net.parameters(),global_params):
+                    proximal_term += (local_weights - global_weights).norm(2)**2
+                    loss += (prox_mu/2) * proximal_term
+
             loss.backward()
             optimizer.step()
 

@@ -12,7 +12,7 @@ from torch.autograd import grad
 def soft_label_cross_entropy(pred, true):
     return torch.mean(torch.sum(- true * F.log_softmax(pred, dim=-1),1))
 
-def attack(origin_params, client_grad, input_shape, label_shape, num_classes, lr, rounds, reg_coeff, seed):
+def attack(origin_params, client_grad, input_shape, label_shape, num_classes, lr, rounds, reg_coeff, seed, cosine_similarity=False):
     """
     Deep Leakage from Gradients
     """
@@ -20,7 +20,7 @@ def attack(origin_params, client_grad, input_shape, label_shape, num_classes, lr
     model = NN()
     model.load_state_dict(origin_params)
     model.train()
-
+    
     torch.manual_seed(seed)
     random.seed(seed)
     np.random.seed(seed)
@@ -30,8 +30,14 @@ def attack(origin_params, client_grad, input_shape, label_shape, num_classes, lr
     initial_data = dummy_data.detach().clone()
     
 
-    #dummy_label = torch.randint(0, num_classes, label_shape)
-    dummy_label = torch.randn(label_shape).to(device).requires_grad_(True)
+    batch_size = label_shape[0]
+    # Add 10 (number of classes) for soft labels
+    dummy_label = torch.randn(batch_size, 10).to(device).requires_grad_(True)
+    print(f"input shape: {input_shape}")
+    print(f"label shape: {label_shape}")
+    print(f"dummy data shape: {dummy_data.shape}")
+    print(f"dummy label shape: {dummy_label.shape}")
+
 #    optimizer = torch.optim.LBFGS([dummy_data, dummy_label],max_iter=20,history_size=10,line_search_fn="strong_wolfe")
     optimizer = torch.optim.Adam([dummy_data,dummy_label],lr=lr)
     criterion = soft_label_cross_entropy 
@@ -39,13 +45,26 @@ def attack(origin_params, client_grad, input_shape, label_shape, num_classes, lr
         def closure():
             optimizer.zero_grad()
             dummy_pred = model(dummy_data)
-#                dummy_loss = torch.mean(torch.sum(- dummy_pred * F.log_softmax(F.softmax(dummy_label,dim=-1), dim=-1),1))
+            target = F.softmax(dummy_label, dim=-1)
+            assert dummy_pred.ndim == 2, dummy_pred.shape
+            assert target.ndim == 2, target.shape
+            assert dummy_pred.shape == target.shape, (dummy_pred.shape, target.shape)
             dummy_loss = criterion(dummy_pred, F.softmax(dummy_label,dim=-1))#F.softmax(dummy_label))
             dummy_grad = grad(dummy_loss, model.parameters(), create_graph=True)
             shapes = [t.shape for t in dummy_grad]
 
-            grad_diff = sum(((dummy_grad - client_grad) ** 2).sum() \
-                    for dummy_grad, client_grad in zip(dummy_grad, client_grad))
+            if cosine_similarity:
+                # Dot Product
+                dot_prod = sum((d * c).sum() for d,c in zip(dummy_grad,client_grad))
+                # L2-Norms
+                dummy_norm_sq = sum(((d)**2).sum() for d in dummy_grad)
+                client_norm_sq = sum(((c)**2).sum() for c in client_grad)
+
+                # Cosine Similarity - Equation in torch docs: torch.nn.CosineSimilarity
+                grad_diff = dot_prod / max(dummy_norm_sq*client_norm_sq, 1e-8)
+            else:
+                grad_diff = sum(((d - c) ** 2).sum() \
+                        for d, c in zip(dummy_grad, client_grad))
             reg = reg_coeff * (dummy_data**2).mean()
             loss = grad_diff + reg
             loss.backward()
@@ -56,7 +75,7 @@ def attack(origin_params, client_grad, input_shape, label_shape, num_classes, lr
 
 
 
-def fed_avg_attack(origin_params, num_training_rounds, weight_at_timestamp, gradient_at_timestamp, input_shape, label_shape, lr, attack_rounds, reg_coeff):
+def fed_avg_attack(origin_params, num_training_rounds, weight_at_timestamp, gradient_at_timestamp, input_shape, label_shape, lr, attack_rounds, reg_coeff, seed):
     """
     From the paper: Improved Gradient Inversion Attacks and Defenses in Federated Learning.
     - The paper applies the attacks to multiple local training rounds where the server has access to intermediate weight and gradient updates, however we apply it to the federated learning process as a whole.
@@ -65,11 +84,16 @@ def fed_avg_attack(origin_params, num_training_rounds, weight_at_timestamp, grad
     model = NN()
     #model.load_state_dict(origin_params)
 
+    torch.manual_seed(seed)
+    random.seed(seed)
+    np.random.seed(seed)
+
     # Initialize Dummy Image
     dummy_data = torch.randn(input_shape).to(device).requires_grad_(True)
     initial_data = dummy_data.detach().clone()
     ##TODO: Recover Labels using Zero-shot approach
-    dummy_label = torch.randn(label_shape).to(device).requires_grad_(True)
+    batch_size = label_shape[0]
+    dummy_label = torch.randn(batch_size, 10).to(device).requires_grad_(True)
 
     optimizer = torch.optim.Adam([dummy_data, dummy_label],lr=lr)
     criterion = soft_label_cross_entropy 

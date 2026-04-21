@@ -11,7 +11,7 @@ from dataclasses import asdict
 from flwr.app import ArrayRecord, ConfigRecord, Message, MetricRecord
 from flwr.common import log, logger
 from flwr.serverapp import Grid
-from flwr.serverapp.strategy import FedAvg, Result
+from flwr.serverapp.strategy import FedProx, Result
 from flwr.serverapp.strategy.strategy_utils import log_strategy_start_info
 from pytorchexample.task import NN
 from torch.autograd import grad
@@ -20,7 +20,7 @@ from pytorchexample.attack import attack, fed_avg_attack, evaluate_inversion, ge
 PROJECT_NAME = "pytorchexample"
 
 
-class CustomFedAvg(FedAvg):
+class CustomFedProx(FedProx):
     def start(
         self,
         grid: Grid,

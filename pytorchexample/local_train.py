@@ -14,12 +14,12 @@ from pytorchexample.train_process_metadata import TrainProcessMetadata
 
 class LocalTrainingStrategy(ABC):
     @abstractmethod
-    def train(self, msg: Message, context: Context, model: NN, trainloader, device):
+    def train(self, msg: Message, context: Context, model: NN, trainloader, device, prox_mu=0, global_params=None):
         pass
 
 class LocalTrainingNormal(LocalTrainingStrategy):
 
-    def train(self, msg: Message, context: Context, model: NN, trainloader, device): 
+    def train(self, msg: Message, context: Context, model: NN, trainloader, device, prox_mu=0, global_params=None): 
         train_loss = train_fn(
             model,
             trainloader,
@@ -58,7 +58,7 @@ class LocalTrainingNormal(LocalTrainingStrategy):
 
 
 class LocalTrainingWithInversion(LocalTrainingStrategy):
-    def train(self, msg: Message, context: Context, model: NN, trainloader, device):
+    def train(self, msg: Message, context: Context, model: NN, trainloader, device, prox_mu=0, global_params=None):
         num_local_batches = int(context.run_config["local-batches"])
         train_metadata = inv_train_fn(
            model,
@@ -67,6 +67,8 @@ class LocalTrainingWithInversion(LocalTrainingStrategy):
            context.run_config["local-epochs"],
            lr=msg.content["config"]["lr"],
            device=device,
+           prox_mu=prox_mu,
+           global_params=global_params
         )
         
         train_loss = asdict(train_metadata)["train_loss"]
@@ -94,6 +96,49 @@ class LocalTrainingWithInversion(LocalTrainingStrategy):
         return Message(content=content, reply_to=msg) 
 
 
+
+
+class LocalTrainingWithProxMu(LocalTrainingStrategy):
+    def train(self, msg: Message, context: Context, model: NN, trainloader, device, prox_mu=0,global_params=None):
+        num_local_batches = int(context.run_config["local-batches"])
+        train_metadata = inv_train_fn(
+           model,
+           trainloader,
+           num_local_batches,
+           context.run_config["local-epochs"],
+           lr=msg.content["config"]["lr"],
+           device=device,
+           prox_mu=prox_mu,
+           global_params=global_params
+        )
+        
+        train_loss = asdict(train_metadata)["train_loss"]
+        train_meta_bytes = pickle.dumps(train_metadata)
+        config_record = ConfigRecord({"meta": train_meta_bytes})
+
+        state_dict = {
+                k: v for k,v in model.state_dict().items()
+                if "num_batches_tracked" not in k
+        }
+        model_record = ArrayRecord(state_dict)
+
+        metrics = {
+                "train_loss": train_loss,
+                "num-examples": len(trainloader.dataset),
+        }
+        metric_record = MetricRecord(metrics) 
+
+        content = RecordDict({
+            "arrays": model_record, 
+            "metrics": metric_record,
+            "train_metadata": config_record
+        })
+
+        return Message(content=content, reply_to=msg) 
+
+
+
+
 class LocalTrainingContext():
     
     def __init__(self, training_strategy: LocalTrainingStrategy) -> None:
@@ -107,8 +152,8 @@ class LocalTrainingContext():
     def training_strategy(self, strategy: LocalTrainingStrategy) -> None:
         self._strategy = strategy
 
-    def train(self, msg: Message, context: Context, model: NN, trainloader, device):
-        return self._strategy.train(msg=msg, context=context, model=model, trainloader=trainloader, device=device)
+    def train(self, msg: Message, context: Context, model: NN, trainloader, device, prox_mu=0, global_params=None):
+        return self._strategy.train(msg=msg, context=context, model=model, trainloader=trainloader, device=device, prox_mu=prox_mu,global_params=global_params)
 
 
    

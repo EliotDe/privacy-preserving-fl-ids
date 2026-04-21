@@ -1,4 +1,5 @@
 import torch
+import copy
 import numpy as np
 from flwr.app import ArrayRecord, Context, Message, MetricRecord, RecordDict
 from flwr.clientapp import ClientApp
@@ -18,38 +19,51 @@ app = ClientApp()
 #experiment_cfg = get_and_parse_config_yaml()
 
 
-#local_dp_obj = DynamicDpMod()
+local_dp_obj = DynamicDpMod()
 
-@app.train()#mods=[local_dp_obj])
+@app.train(mods=[local_dp_obj])
 def train(msg: Message, context: Context):
     """Train the model on local data."""
-    #global experiment_cfg
-
-    # Load the model and initialize it with the received weights
-    model = NN()
-    model.load_state_dict(msg.content["arrays"].to_torch_state_dict())
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    model.to(device)
-
     ## -------- Load the config and data----------##
 
     ## NOTE: This is purely for experimental purposes; so that we can use a training function with more control on the local data being used -- in actuality the client would not know an attack is being run by the server
     ## NOTE: I'm not sure the eval function is safe since it executes arbitrary inputs -- since its only used for local experimentation this is ok but it should not be used in production
-    running_inversion = context.run_config["run-inversion"]
     partition_id = context.node_config["partition-id"]
     num_partitions = context.node_config["num-partitions"]
+    running_inversion = context.run_config["run-inversion"]
     batch_size = context.run_config["batch-size"]
-    trainloader, _ = load_data(partition_id, num_partitions, batch_size)
+    train_shuffle = context.run_config["shuffle"]
+    window_size = context.run_config["window-size"]
+    seed = context.run_config["seed"]
+    prox_mu = context.run_config["prox-mu"]
+    #prox_mu = msg.content["config"]["proximal-mu"]
 
+    trainloader, _ = load_data(partition_id, num_partitions, batch_size, window_size, train_shuffle, seed)
+
+    # Load the model and initialize it with the received weights
+    model = NN()
+    model.load_state_dict(msg.content["arrays"].to_torch_state_dict())
+
+    if prox_mu != 0:
+        global_params = copy.deepcopy(model).parameters()
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+
+    
 
     # Call the training function
     if running_inversion:
         training_context = LocalTrainingContext(LocalTrainingWithInversion())
-        return training_context.train(msg, context, model, trainloader, device)
+        if prox_mu != 0:
+            return training_context.train(msg, context, model, trainloader, device, prox_mu, global_params)
+        else:
+            return training_context.train(msg, context, model, trainloader, device)
     else:
         training_context = LocalTrainingContext(LocalTrainingNormal())
-        return training_context.train(msg, context, model, trainloader, device)
-
+        if prox_mu != 0:
+            return training_context.train(msg, context, model, trainloader, device, prox_mu, global_params)
+        else:
+            return training_context.train(msg, context, model, trainloader, device)
    
 ## NOTE: This is the old method, keep it just in case
 def old_train(msg: Message, context: Context):
@@ -116,7 +130,7 @@ def old_train(msg: Message, context: Context):
     model_update = [np.subtract(x,y) for (x,y) in zip(trained_model_ndarrays, original_model_ndarrays, strict=True)]
     norms = [np.linalg.norm(array.flat) for array in model_update] 
     norm = float(np.sqrt(sum([norm**2 for norm in norms])))
-    print(f"L2-Norm of Client update: {norm}")
+    #print(f"L2-Norm of Client update: {norm}")
 
     return Message(content=content, reply_to=msg)
 
@@ -135,7 +149,11 @@ def evaluate(msg: Message, context: Context):
     partition_id = context.node_config["partition-id"]
     num_partitions = context.node_config["num-partitions"]
     batch_size = context.run_config["batch-size"]
-    _, valloader = load_data(partition_id, num_partitions, batch_size)
+    running_inversion = context.run_config["run-inversion"]
+    window_size = context.run_config["window-size"]
+    seed = context.run_config["seed"]
+
+    _, valloader = load_data(partition_id, num_partitions, batch_size, window_size, seed=seed)
 
     # Call the evaluation function
     eval_loss, eval_acc, _, _ = test_fn(
