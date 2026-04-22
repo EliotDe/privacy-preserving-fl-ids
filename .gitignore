@@ -2,6 +2,9 @@
 .flwr/
 *.flwr
 
+# Images
+figures/
+
 # Python
 __pycache__/
 *.pyc

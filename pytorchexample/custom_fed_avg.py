@@ -78,6 +78,8 @@ class CustomFedAvg(FedAvg):
         attack_lr = train_config['attack_lr']
         attack_rounds = train_config["attack_rounds"]
         attack_reg = train_config["attack_reg"]
+        attack_max_iter = train_config["attack_max_iter"]
+        attack_history_size = train_config["attack_history_size"]
         shuffle_train = train_config["shuffle"]
         seed = train_config["seed"]
 
@@ -96,8 +98,8 @@ class CustomFedAvg(FedAvg):
         origin_params = initial_arrays.to_torch_state_dict()
 
         # Model parameters and gradients at each round of training for each client
-        server_params_over_time: dict[int, list[dict]] = [] 
-        grads_over_time: dict[int, list[dict]] = {}
+        server_params_over_time: list[dict] = [] 
+        grads_over_time: dict[int, dict] = {}
 
         # Client input and label shapes
         client_training_data_shape = {} 
@@ -105,7 +107,7 @@ class CustomFedAvg(FedAvg):
         # Original Client Training Data -- Used for evaluation
         ## NOTE: This is used in the multi-update attack which assumes client data doesn't change over updates 
         client_training_data: dict[int, dict] = {}
-        client_training_labels: dict[int, dict] = {}
+        client_training_labels: dict[int, list[dict]] = {}
 
         
         # This will be used to evaluate the inversion attack
@@ -113,7 +115,9 @@ class CustomFedAvg(FedAvg):
             log(INFO, "")
             log(INFO, "[ROUND %s/%s]", current_round, num_rounds)
 
-            server_params_over_time.append(arrays.to_torch_state_dict())
+            state = arrays.to_torch_state_dict()
+            arrays_at_t = {k: v.detach().clone() for k,v in state.items()}
+            server_params_over_time.append(arrays_at_t)
             
             # -----------------------------------------------------------------
             # --- TRAINING (CLIENTAPP-SIDE) -----------------------------------
@@ -200,16 +204,17 @@ class CustomFedAvg(FedAvg):
                         y = train_meta["y"]
                         client_training_labels[node_id]=y
                         num_local_training_steps = train_meta["timestamps"]
-                        log(INFO, "")
-                        log(INFO, "Getting Client Gradients...")
+                        #log(INFO, "")
+                        #log(INFO, "Getting Client Gradients...")
                         # Get trained model parameters 
                         trained_params = m.content.array_records.values()
                         # Get and store recovered gradients
                         client_grad = get_client_grad(trained_params, origin_params, lr, num_local_training_steps) 
                         if node_id in grads_over_time:
-                            grads_over_time[node_id].append(client_grad)
+                            grad_at_t = [g.detach().clone() for g in client_grad]
+                            grads_over_time[node_id].append(grad_at_t)
                         else:
-                            grads_over_time[node_id] = [client_grad]
+                            grads_over_time[node_id] = [[g.detach().clone() for g in client_grad]]
                         # Get and store training data shapes
                         ## NOTE: This is for the multi-update attack which assumes training data is the same across rounds
                         input_shape = train_meta["X_shape"]
@@ -223,8 +228,10 @@ class CustomFedAvg(FedAvg):
                                 input_shape=train_meta["X_shape"],
                                 label_shape=train_meta["y_shape"],
                                 num_classes=10,
-                                lr=attack_lr,
+                                #lr=attack_lr,
                                 rounds=attack_rounds,
+                                max_iter = attack_max_iter,
+                                history_size = attack_history_size,
                                 reg_coeff=attack_reg,
                                 seed=seed
                         )
@@ -237,6 +244,8 @@ class CustomFedAvg(FedAvg):
                                 label_shape=train_meta["y_shape"],
                                 num_classes=10,
                                 lr=attack_lr,
+                                max_iter = attack_max_iter,
+                                history_size = attack_history_size,
                                 rounds=attack_rounds,
                                 reg_coeff=attack_reg,
                                 seed=seed,
@@ -252,7 +261,7 @@ class CustomFedAvg(FedAvg):
                         dlg_cossim_mse, dlg_cossim_pcc = evaluate_inversion(X, recovered_X_cossim, y, recovered_y_cossim, initial_dummy_data_cossim)
                         all_dlg_cossim_mse.append(dlg_cossim_mse)
                         all_dlg_cossim_pcc.append(dlg_cossim_pcc)
-                        recovery_stats_per_client_dlg[node_id] = (dlg_cossim_mse, dlg_cossim_pcc) 
+                        recovery_stats_per_client_dlg_cossim[node_id] = (dlg_cossim_mse, dlg_cossim_pcc) 
 
 
             dlg_mse_avg = sum(all_dlg_mse) / len(all_dlg_mse)
@@ -295,7 +304,11 @@ class CustomFedAvg(FedAvg):
 
 
             # Update origin params to aggregated params
-            origin_params=arrays.to_torch_state_dict()
+            origin_params= {
+                k: v.detach().clone()
+                for k, v in arrays.to_torch_state_dict().items()
+            }     
+
             print(f"Recovery stats per client: {recovery_stats_per_client_dlg}") 
 
         # -----------------------------------------------------------------
@@ -315,7 +328,9 @@ class CustomFedAvg(FedAvg):
                     gradient_at_timestamp = gradients,
                     input_shape = input_shape,
                     label_shape = label_shape,
-                    lr = attack_lr,
+                    #lr = attack_lr,
+                    max_iter = attack_max_iter,
+                    history_size = attack_history_size,
                     attack_rounds = attack_rounds,
                     reg_coeff = attack_reg,
                     seed=seed

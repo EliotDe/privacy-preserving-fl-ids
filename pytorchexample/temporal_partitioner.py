@@ -81,13 +81,12 @@ class TemporalPartitioner(Partitioner):
 
 
     def _labeling_rule(self,df):
-        #type_set = set(df)
-        #if len(type_set) == 1 and "normal" in type_set:
-        #    return "normal"
-        #else:
-        #    for t in type_set:
-        #        if t != "normal":
-        #            return t
+        type_set = set(df)
+        if len(type_set) == 1 and "normal" in type_set:
+            return "normal"
+        elif "mitm" in type_set:
+            return "mitm"
+
         return df.iloc[-1]
 
 

@@ -2,6 +2,7 @@ import os
 import yaml
 import numpy as np
 import pandas as pd
+import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -119,15 +120,22 @@ def get_class_names():
 
 
     
-## TODO: This needs to be refined
 def labeling_rule(window_types):
     type_set = set(window_types)
+    #if len(type_set) == 1 and "normal" in type_set:
+    #    return "normal"
+    #else:
+    #    for t in type_set:
+    #        if t != "normal":
+    #            return t
     if len(type_set) == 1 and "normal" in type_set:
         return "normal"
-    else:
-        for t in type_set:
-            if t != "normal":
-                return t
+    elif "mitm" in type_set:
+        return "mitm"
+
+    return window_types.iloc[-1]
+
+
 
      
 def load_data(partition_id: int, num_partitions: int, batch_size: int, window_size: int, seed: int, shuffle_train=True):
@@ -169,12 +177,25 @@ def load_data(partition_id: int, num_partitions: int, batch_size: int, window_si
     #    partition_df.to_csv(f"{cwd}/dataset/{partition_id}.csv")
 
     p_window_types = partition_df.groupby("window_id")["type"].agg(labeling_rule).reset_index()
-    unique_classes, class_counts = np.unique(p_window_types['type'],return_counts=True)
+    y = p_window_types["type"]
+    X = p_window_types["window_id"]
 
-    if class_counts.min() < 2:
-        train_windows, test_windows = train_test_split(p_window_types['window_id'],random_state=seed)
+    
+    unique_classes, class_counts = np.unique(y,return_counts=True)
+
+    n_samples = len(y)
+    n_classes = len(unique_classes)
+    
+    test_size = 0.2
+    n_test = math.ceil(n_samples * test_size)
+    n_train = n_samples - n_test
+
+
+
+    if n_classes < 2 or class_counts.min() < 2 or n_test < n_classes or n_train < n_classes:
+        train_windows, test_windows = train_test_split(p_window_types['window_id'], test_size = test_size, random_state=seed)
     else:
-        train_windows, test_windows = train_test_split(p_window_types['window_id'], stratify=p_window_types['type'],random_state=seed)
+        train_windows, test_windows = train_test_split(p_window_types['window_id'], test_size=test_size, stratify=p_window_types['type'],random_state=seed)
 
 
     train_df = partition_df[partition_df['window_id'].isin(train_windows)]
@@ -239,7 +260,7 @@ def load_centralized_dataset(window_size: int):
     return DataLoader(ds, batch_size=32,shuffle=False)
 
 
-def train(net, trainloader, epochs, lr, weight_decay, device, prox_mu=0, global_params=None):
+def train(net, trainloader, epochs, lr, device, prox_mu=0, global_params=None):
     """
     Train the model on the training set.
 
@@ -247,7 +268,7 @@ def train(net, trainloader, epochs, lr, weight_decay, device, prox_mu=0, global_
     """
     net.to(device)  # move model to GPU if available
     criterion = torch.nn.CrossEntropyLoss().to(device)
-    optimizer = torch.optim.AdamW(net.parameters(),lr=lr,weight_decay=weight_decay)
+    optimizer = torch.optim.SGD(net.parameters(),lr=lr)#Adam(net.parameters(),lr=lr)
     net.train()
 
     if global_params is not None:
@@ -269,7 +290,7 @@ def train(net, trainloader, epochs, lr, weight_decay, device, prox_mu=0, global_
                 proximal_term = 0.0
                 for local_weights, global_weights in zip(net.parameters(),global_params):
                     proximal_term += (local_weights - global_weights).norm(2)**2
-                    loss += (prox_mu/2) * proximal_term
+                loss += (prox_mu/2) * proximal_term
             loss.backward()
             optimizer.step()
 
@@ -300,6 +321,9 @@ def inversion_train(net, trainloader, num_batches, epochs, lr, device, prox_mu=0
 
     if global_params is not None:
         global_params = [p.detach().to(device) for p in global_params]
+
+    if num_batches > len(trainloader):
+        num_batches = len(trainloader)
     
     all_inputs = []
     all_labels = []
@@ -329,7 +353,7 @@ def inversion_train(net, trainloader, num_batches, epochs, lr, device, prox_mu=0
                 proximal_term = 0.0
                 for local_weights, global_weights in zip(net.parameters(),global_params):
                     proximal_term += (local_weights - global_weights).norm(2)**2
-                    loss += (prox_mu/2) * proximal_term
+                loss += (prox_mu/2) * proximal_term
 
             loss.backward()
             optimizer.step()

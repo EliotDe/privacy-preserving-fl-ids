@@ -12,7 +12,8 @@ from torch.autograd import grad
 def soft_label_cross_entropy(pred, true):
     return torch.mean(torch.sum(- true * F.log_softmax(pred, dim=-1),1))
 
-def attack(origin_params, client_grad, input_shape, label_shape, num_classes, lr, rounds, reg_coeff, seed, cosine_similarity=False):
+#def attack(origin_params, client_grad, input_shape, label_shape, num_classes, lr, rounds, reg_coeff, seed, cosine_similarity=False):
+def attack(origin_params, client_grad, input_shape, label_shape, num_classes, max_iter, history_size, rounds, reg_coeff, seed, lr=1.0, cosine_similarity=False):
     """
     Deep Leakage from Gradients
     """
@@ -33,15 +34,13 @@ def attack(origin_params, client_grad, input_shape, label_shape, num_classes, lr
     batch_size = label_shape[0]
     # Add 10 (number of classes) for soft labels
     dummy_label = torch.randn(batch_size, 10).to(device).requires_grad_(True)
-    print(f"input shape: {input_shape}")
-    print(f"label shape: {label_shape}")
-    print(f"dummy data shape: {dummy_data.shape}")
-    print(f"dummy label shape: {dummy_label.shape}")
 
-#    optimizer = torch.optim.LBFGS([dummy_data, dummy_label],max_iter=20,history_size=10,line_search_fn="strong_wolfe")
-    optimizer = torch.optim.Adam([dummy_data,dummy_label],lr=lr)
+    optimizer = torch.optim.LBFGS([dummy_data, dummy_label], lr=lr,max_iter=max_iter,history_size=history_size,line_search_fn="strong_wolfe")
+   # optimizer = torch.optim.Adam([dummy_data,dummy_label],lr=lr)
+   
     criterion = soft_label_cross_entropy 
     for i in range(rounds):
+        #print("attacking")
         def closure():
             optimizer.zero_grad()
             dummy_pred = model(dummy_data)
@@ -75,13 +74,14 @@ def attack(origin_params, client_grad, input_shape, label_shape, num_classes, lr
 
 
 
-def fed_avg_attack(origin_params, num_training_rounds, weight_at_timestamp, gradient_at_timestamp, input_shape, label_shape, lr, attack_rounds, reg_coeff, seed):
+#def fed_avg_attack(origin_params, num_training_rounds, weight_at_timestamp, gradient_at_timestamp, input_shape, label_shape, lr, attack_rounds, reg_coeff, seed):
+def fed_avg_attack(origin_params, num_training_rounds, weight_at_timestamp, gradient_at_timestamp, input_shape, label_shape, attack_rounds, max_iter, history_size, reg_coeff, seed, lr=1.0):
     """
     From the paper: Improved Gradient Inversion Attacks and Defenses in Federated Learning.
     - The paper applies the attacks to multiple local training rounds where the server has access to intermediate weight and gradient updates, however we apply it to the federated learning process as a whole.
     """
     device="cpu"
-    model = NN()
+    #model = NN()
     #model.load_state_dict(origin_params)
 
     torch.manual_seed(seed)
@@ -95,17 +95,19 @@ def fed_avg_attack(origin_params, num_training_rounds, weight_at_timestamp, grad
     batch_size = label_shape[0]
     dummy_label = torch.randn(batch_size, 10).to(device).requires_grad_(True)
 
-    optimizer = torch.optim.Adam([dummy_data, dummy_label],lr=lr)
+    #optimizer = torch.optim.Adam([dummy_data, dummy_label],lr=lr)
+    optimizer = torch.optim.LBFGS([dummy_data, dummy_label], lr=lr,max_iter=max_iter,history_size=history_size,line_search_fn="strong_wolfe")
     criterion = soft_label_cross_entropy 
     for i in range(attack_rounds):
         def closure():
             optimizer.zero_grad()
             grad_diffs = []
             for t in range(num_training_rounds):
-                model.load_state_dict(weight_at_timestamp[t])
-                dummy_pred = model(dummy_data)
+                local_model = NN().to(device)
+                local_model.load_state_dict(weight_at_timestamp[t])
+                dummy_pred = local_model(dummy_data)
                 dummy_loss = criterion(dummy_pred, F.softmax(dummy_label,dim=-1))
-                dummy_grad = grad(dummy_loss, model.parameters(), create_graph=True)
+                dummy_grad = grad(dummy_loss, local_model.parameters(), create_graph=True)
                 grad_diff = sum(((dummy_grad - client_gradient_at_t) ** 2).sum() \
                         for dummy_grad, client_gradient_at_t in zip(dummy_grad, gradient_at_timestamp[t]))
                 grad_diffs.append(grad_diff)

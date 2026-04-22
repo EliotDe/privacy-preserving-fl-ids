@@ -78,6 +78,8 @@ class CustomFedProx(FedProx):
         attack_lr = train_config['attack_lr']
         attack_rounds = train_config["attack_rounds"]
         attack_reg = train_config["attack_reg"]
+        attack_max_iter = train_config["attack_max_iter"]
+        attack_history_size = train_config["attack_history_size"]
         shuffle_train = train_config["shuffle"]
         seed = train_config["seed"]
 
@@ -96,7 +98,7 @@ class CustomFedProx(FedProx):
         origin_params = initial_arrays.to_torch_state_dict()
 
         # Model parameters and gradients at each round of training for each client
-        server_params_over_time: dict[int, list[dict]] = [] 
+        server_params_over_time: list[dict]= [] 
         grads_over_time: dict[int, list[dict]] = {}
 
         # Client input and label shapes
@@ -113,7 +115,9 @@ class CustomFedProx(FedProx):
             log(INFO, "")
             log(INFO, "[ROUND %s/%s]", current_round, num_rounds)
 
-            server_params_over_time.append(arrays.to_torch_state_dict())
+            state = arrays.to_torch_state_dict()
+            arrays_at_t = {k: v.detach().clone() for k,v in state.items()}
+            server_params_over_time.append(arrays_at_t)
             
             # -----------------------------------------------------------------
             # --- TRAINING (CLIENTAPP-SIDE) -----------------------------------
@@ -207,9 +211,10 @@ class CustomFedProx(FedProx):
                         # Get and store recovered gradients
                         client_grad = get_client_grad(trained_params, origin_params, lr, num_local_training_steps) 
                         if node_id in grads_over_time:
-                            grads_over_time[node_id].append(client_grad)
+                            grad_at_t = [g.detach().clone() for g in client_grad]
+                            grads_over_time[node_id].append(grad_at_t)
                         else:
-                            grads_over_time[node_id] = [client_grad]
+                            grads_over_time[node_id] = [[g.detach().clone() for g in client_grad]]
                         # Get and store training data shapes
                         ## NOTE: This is for the multi-update attack which assumes training data is the same across rounds
                         input_shape = train_meta["X_shape"]
@@ -223,8 +228,10 @@ class CustomFedProx(FedProx):
                                 input_shape=train_meta["X_shape"],
                                 label_shape=train_meta["y_shape"],
                                 num_classes=10,
-                                lr=attack_lr,
-                                rounds=attack_rounds,
+                                #lr=attack_lr,
+                                #rounds=attack_rounds,
+                                max_iter = attack_max_iter,
+                                history_size = attack_history_size,
                                 reg_coeff=attack_reg,
                                 seed=seed
                         )
@@ -236,7 +243,9 @@ class CustomFedProx(FedProx):
                                 input_shape=train_meta["X_shape"],
                                 label_shape=train_meta["y_shape"],
                                 num_classes=10,
-                                lr=attack_lr,
+                                #lr=attack_lr,
+                                max_iter = attack_max_iter,
+                                history_size = attack_history_size,
                                 rounds=attack_rounds,
                                 reg_coeff=attack_reg,
                                 seed=seed,
@@ -295,7 +304,10 @@ class CustomFedProx(FedProx):
 
 
             # Update origin params to aggregated params
-            origin_params=arrays.to_torch_state_dict()
+            origin_params= {
+                k: v.detach().clone()
+                for k, v in arrays.to_torch_state_dict().items()
+            }     
             print(f"Recovery stats per client: {recovery_stats_per_client_dlg}") 
 
         # -----------------------------------------------------------------
@@ -315,7 +327,9 @@ class CustomFedProx(FedProx):
                     gradient_at_timestamp = gradients,
                     input_shape = input_shape,
                     label_shape = label_shape,
-                    lr = attack_lr,
+                    #lr = attack_lr,
+                    max_iter = attack_max_iter,
+                    history_size = attack_history_size,
                     attack_rounds = attack_rounds,
                     reg_coeff = attack_reg,
                     seed=seed

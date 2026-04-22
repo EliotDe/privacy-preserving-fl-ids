@@ -5,8 +5,8 @@ import torch
 import os
 from flwr.app import ArrayRecord, ConfigRecord, Context, MetricRecord
 from flwr.serverapp import Grid, ServerApp
-from flwr.serverapp.strategy import FedAvg, Result
-from sklearn.metrics import confusion_matrix
+from flwr.serverapp.strategy import FedAvg, FedProx, Result
+from sklearn.metrics import confusion_matrix, f1_score
 from pytorchexample.task import NN, load_centralized_dataset, test, get_class_names_from_labels, get_class_names
 from pytorchexample.task import get_and_parse_config_yaml
 from pytorchexample.custom_fed_avg import CustomFedAvg
@@ -55,6 +55,8 @@ def main(grid: Grid, context: Context) -> None:
         attack_lr = context.run_config["attack-lr"]
         attack_rounds = context.run_config["attack-rounds"]
         attack_reg = context.run_config["attack-reg"]
+        attack_max_iter = context.run_config["attack-max-iter"]
+        attack_history_size = context.run_config["attack-history-size"]
         if prox_mu != 0:
             strategy = CustomFedProx(proximal_mu=prox_mu, fraction_evaluate=fraction_evaluate)
         else:
@@ -64,7 +66,7 @@ def main(grid: Grid, context: Context) -> None:
         result = strategy.start(
             grid=grid,
             initial_arrays=arrays,
-            train_config=ConfigRecord({"lr": lr, "weight_decay":weight_decay, "attack_lr": attack_lr, "attack_rounds": attack_rounds, "attack_reg": attack_reg, "seed": seed, "shuffle": shuffle_train}),
+            train_config=ConfigRecord({"lr": lr, "weight_decay":weight_decay, "attack_lr": attack_lr, "attack_max_iter": attack_max_iter, "attack_history_size": attack_history_size, "attack_rounds": attack_rounds, "attack_reg": attack_reg, "seed": seed, "shuffle": shuffle_train}),
             num_rounds=num_rounds,
             evaluate_fn=get_evaluate_fn(window_size=window_size),
         )
@@ -118,6 +120,9 @@ def get_evaluate_fn(window_size: int):
 
         # Append accuracy per class to metric record
         acc_per_class = get_accuracy_per_class(predictions, labels, class_names)
+        f1_score = get_f1_score(predictions, labels, class_names)
+        record['f1-score'] = f1_score
+
         for k, v in acc_per_class.items():
             record[k] = v
 
@@ -136,7 +141,9 @@ def get_accuracy_per_class(y_pred,y_true,labels):
 
     return class_dict 
 
-
+def get_f1_score(y_pred, y_true,labels):
+    return f1_score(y_true, y_pred, labels=labels, average='macro')
+    
 
 def save_result(results: Result, context: Context):
     res_str = str(results).replace("\n","").replace("\t"," ")

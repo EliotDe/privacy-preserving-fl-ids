@@ -17,7 +17,7 @@ local_epochs = [1,3,5]
 batch_sizes = [32, 64]
 window_sizes = [30,40,50]
 
-runs = 29 
+runs = 30 
 
 seen = set()
 for _ in range(runs):
@@ -37,9 +37,24 @@ for _ in range(runs):
     with open("pyproject.toml") as f:
         cfg = toml.load(f)
 
-    cfg["tool"]["flwr"]["app"]["config"]["run-inversion"] = False 
+    cfg["tool"]["flwr"]["app"]["config"]["experiment-name"] = "tune-model-sgd" 
     cfg["tool"]["flwr"]["app"]["config"]["shuffle"] = True 
+    cfg["tool"]["flwr"]["app"]["config"]["num-server-rounds"] = 35 
+    # No Attack
+    cfg["tool"]["flwr"]["app"]["config"]["run-inversion"] = False 
+    cfg["tool"]["flwr"]["app"]["config"]["attack-lr"] = 0 
+    cfg["tool"]["flwr"]["app"]["config"]["attack-rounds"] = 0 
+    cfg["tool"]["flwr"]["app"]["config"]["attack-max-iter"] = 0 
+    cfg["tool"]["flwr"]["app"]["config"]["attack-history-size"] = 0 
+    cfg["tool"]["flwr"]["app"]["config"]["attack-reg"] = 0 
+    # Run FedAvg
     cfg["tool"]["flwr"]["app"]["config"]["prox-mu"] = 0 
+    # No Noise
+    cfg["tool"]["flwr"]["app"]["config"]["epsilon"] = 0 
+    cfg["tool"]["flwr"]["app"]["config"]["delta"] = 0 
+    cfg["tool"]["flwr"]["app"]["config"]["sensitivity"] = 0 
+    cfg["tool"]["flwr"]["app"]["config"]["clipping_norm"] = 0 
+    # Set variables
     cfg["tool"]["flwr"]["app"]["config"]["learning-rate"] = lr 
     cfg["tool"]["flwr"]["app"]["config"]["batch-size"] = batch_size
     cfg["tool"]["flwr"]["app"]["config"]["local-epochs"] = num_local_epochs 

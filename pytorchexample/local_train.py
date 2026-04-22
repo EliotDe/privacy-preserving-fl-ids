@@ -25,7 +25,7 @@ class LocalTrainingNormal(LocalTrainingStrategy):
             trainloader,
             context.run_config["local-epochs"],
             msg.content["config"]["lr"],
-            msg.content["config"]["weight_decay"],
+            #msg.content["config"]["weight_decay"],
             device,
         )
 
