@@ -139,4 +139,4 @@ def evaluate_result(no_noise_experiment_name: str, noise_experiment_name: str, f
 
 #evaluate_result("sgd-baseline-fedavg-across-clients" , "vary-noise-model-sgd-fedavg", fig_name="Acc Per Class -- FedAvg")
 #evaluate_result("sgd-baseline-fedavg-across-clients" , "vary-noise-model-sgd-fedprox", fig_name="Acc Per Class -- FedProx")
-evaluate_result("5-baseline-for-noise-across-clients-adam","6-vary-noise-across-150-clients-adam-fedprox(1)",fig_name=Acc Per Class)
+evaluate_result("5-baseline-for-noise-across-clients-adam","6-vary-noise-across-150-clients-adam-fedprox(1)",fig_name="Acc Per Class")
