@@ -134,8 +134,8 @@ def evaluate_result(no_noise_experiment_name: str, noise_experiment_name: str, f
     count = 0 
     for prox_mu, eps_acc_perclass_dict in runs.items():
         # Add baselines 
-        eps_acc_perclass_dict["No Noise 150 Clients"] = no_noise_acc_per_class["No Noise 150 Clients"] 
-        eps_acc_perclass_dict["No Noise 10 Clients"] = no_noise_acc_per_class["No Noise 10 Clients"] 
+        eps_acc_perclass_dict["No Noise 150 Clients"] = baselines["No Noise 150 Clients"] 
+        eps_acc_perclass_dict["No Noise 10 Clients"] = baselines["No Noise 10 Clients"] 
         generate_polar_plot(eps_acc_perclass_dict, categories, fig_name=f"{fig_name} prox-mu: {prox_mu}", save_to=f"figures/acc_per_class_{count}.png")
         count += 1
 
