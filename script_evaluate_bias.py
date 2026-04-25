@@ -24,29 +24,58 @@ def extract_metric_record(results_str, section):
 
 def generate_polar_plot(data: dict[float, list[float]], categories, fig_name:str, save_to:str):
     fig = go.Figure()
+
+    theta_cats = categories + [categories[0]]
+
+    
     for name, values in data.items():
+        if "No Noise" in name:
+            line_style = dict(width=2, dash="dash")
+            fill_style = 'toself'
+            mode = 'lines+markers'
+            opacity = 0.2
+        else:
+            line_style = dict(width=2)
+            fill_style = 'toself'
+            mode = 'lines+markers'
+            opacity = 0.2
+        
+        r_values = values + [values[0]]
         fig.add_trace(go.Scatterpolar(
-            r=values + [values[0]],
-            theta=categories + [categories[0]],
-            fill='toself',
+            r=values + r_values,
+            theta=theta_cats,
+            fill=fill_style,
             name=name,
-            opacity=0.5
+            mode=mode,
+            opacity=1.0,
+            #fillopacity=opacity,
+            line=line_style,
+            marker=dict(size=8)
         ))
+
     fig.update_layout(
-        title=fig_name,
+        template="plotly_white",
+        title=dict(text=fig_name, font=dict(size=20)),
         polar=dict(
             radialaxis=dict(
                 visible=True,
                 range=[0,1],
+                gridcolor="lightgrey",
+                tickvals=[0.2, 0.4, 0.6, 0.8, 1.0],
                 tickfont=dict(size=10)
             ),
             angularaxis=dict(
-                direction="clockwise"
+                direction="clockwise",
+                gridcolor="lightgrey",
+                linecolor="black"
             )
         ),
         legend=dict(
-            x=1.05,
+            x=1.1,
             y=1
+        ),
+        margin=dict(
+            l=80, r=80, t=100, b=80
         )
     )
     fig.write_image(save_to)
@@ -91,7 +120,7 @@ def evaluate_result(no_noise_experiment_name: str, noise_experiment_name: str, f
             epsilon = config.get("epsilon")
             num_clients = config.get("num-clients")
             
-            if num_clients != 150 or num_clients != 10:
+            if num_clients not in [150, 10]:
                 continue
 
             # Extract server metrics
@@ -134,9 +163,17 @@ def evaluate_result(no_noise_experiment_name: str, noise_experiment_name: str, f
     count = 0 
     for prox_mu, eps_acc_perclass_dict in runs.items():
         # Add baselines 
-        eps_acc_perclass_dict["No Noise 150 Clients"] = baselines["No Noise 150 Clients"] 
-        eps_acc_perclass_dict["No Noise 10 Clients"] = baselines["No Noise 10 Clients"] 
-        generate_polar_plot(eps_acc_perclass_dict, categories, fig_name=f"{fig_name} prox-mu: {prox_mu}", save_to=f"figures/acc_per_class_{count}.png")
+        #print(baselines)
+        # eps_acc_perclass_dict["No Noise 150 Clients"] = baselines["No Noise 150 Clients"] 
+        # eps_acc_perclass_dict["No Noise 10 Clients"] = baselines["No Noise 10 Clients"] 
+        
+        ## Ordered dict makes plot more aesthetically pleasing
+        ordered_dict = {}
+        ordered_dict["No Noise 10 Clients"]  = baselines["No Noise 10 Clients"]
+        ordered_dict["No Noise 150 Clients"] = baselines["No Noise 150 Clients"]
+        for k, v in eps_acc_perclass_dict.items():
+            ordered_dict[k] = v
+        generate_polar_plot(ordered_dict, categories, fig_name=f"{fig_name} prox-mu: {prox_mu}", save_to=f"figures/acc_per_class_{count}.png")
         count += 1
 
 #evaluate_result("sgd-baseline-fedavg-across-clients" , "vary-noise-model-sgd-fedavg", fig_name="Acc Per Class -- FedAvg")
