@@ -80,7 +80,7 @@ def evaluate_result(no_noise_experiment_name: str, noise_experiment_name: str, f
 
 
     # Get Baseline
-    baselines{}
+    baselines = {}
     with open(f"{cwd}/results/{no_noise_experiment_name}.jsonl","r") as f:
         for line in f:
             if not line.strip(): continue
