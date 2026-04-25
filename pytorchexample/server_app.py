@@ -57,6 +57,7 @@ def main(grid: Grid, context: Context) -> None:
         attack_reg = context.run_config["attack-reg"]
         attack_max_iter = context.run_config["attack-max-iter"]
         attack_history_size = context.run_config["attack-history-size"]
+        num_clients_to_attack: int = context.run_config["num-clients-to-attack"]
         if prox_mu != 0:
             strategy = CustomFedProx(proximal_mu=prox_mu, fraction_evaluate=fraction_evaluate)
         else:
@@ -66,7 +67,7 @@ def main(grid: Grid, context: Context) -> None:
         result = strategy.start(
             grid=grid,
             initial_arrays=arrays,
-            train_config=ConfigRecord({"lr": lr, "weight_decay":weight_decay, "attack_lr": attack_lr, "attack_max_iter": attack_max_iter, "attack_history_size": attack_history_size, "attack_rounds": attack_rounds, "attack_reg": attack_reg, "seed": seed, "shuffle": shuffle_train}),
+            train_config=ConfigRecord({"lr": lr, "weight_decay":weight_decay, "attack_lr": attack_lr, "attack_max_iter": attack_max_iter, "attack_history_size": attack_history_size, "attack_rounds": attack_rounds, "attack_reg": attack_reg, "seed": seed, "shuffle": shuffle_train, "num_clients_to_attack": num_clients_to_attack}),
             num_rounds=num_rounds,
             evaluate_fn=get_evaluate_fn(window_size=window_size),
         )

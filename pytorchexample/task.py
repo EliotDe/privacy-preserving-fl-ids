@@ -58,15 +58,15 @@ class NN(nn.Module):
 
     def forward(self, x):
         x = self.relu(self.bn1(self.conv1(x)))
-       # x = self.relu(self.conv1(x))
+#        x = self.relu(self.conv1(x))
         x = self.pool(x)
 
         x = self.relu(self.bn2(self.conv2(x)))
-       # x = self.relu(self.conv2(x))
+#        x = self.relu(self.conv2(x))
         x = self.pool(x)
 
         x = self.relu(self.bn3(self.conv3(x)))
-       # x = self.relu(self.conv3(x))
+#        x = self.relu(self.conv3(x))
         x = self.pool(x)
 
         x = self.adaptive_pool(x)
@@ -260,7 +260,7 @@ def load_centralized_dataset(window_size: int):
     return DataLoader(ds, batch_size=32,shuffle=False)
 
 
-def train(net, trainloader, epochs, lr, device, prox_mu=0, global_params=None):
+def train(net, trainloader, epochs, lr, device, prox_mu=0, optimizer="sgd", global_params=None):
     """
     Train the model on the training set.
 
@@ -268,9 +268,13 @@ def train(net, trainloader, epochs, lr, device, prox_mu=0, global_params=None):
     """
     net.to(device)  # move model to GPU if available
     criterion = torch.nn.CrossEntropyLoss().to(device)
-    optimizer = torch.optim.SGD(net.parameters(),lr=lr)#Adam(net.parameters(),lr=lr)
-    net.train()
 
+    if optimizer == "sgd":
+        optimizer = torch.optim.SGD(net.parameters(),lr=lr)
+    elif optimizer == "adam":
+        optimizer = torch.optim.Adam(net.parameters(),lr=lr)
+
+    net.train()
     if global_params is not None:
         global_params = [p.detach().to(device) for p in global_params]
 
@@ -303,7 +307,7 @@ def train(net, trainloader, epochs, lr, device, prox_mu=0, global_params=None):
     return avg_trainloss
 
 
-def inversion_train(net, trainloader, num_batches, epochs, lr, device, prox_mu=0, global_params=None):
+def inversion_train(net, trainloader, num_batches, epochs, lr, device, prox_mu=0, optimizer="sgd", global_params=None):
     """
     When running Inversion Attack experiments, more control is needed over 
     the data being trained on and the optimization. This method provides 
@@ -316,13 +320,18 @@ def inversion_train(net, trainloader, num_batches, epochs, lr, device, prox_mu=0
     #print(f"\n\ntraining learning rate: {lr}")
     net.to(device)
     criterion = torch.nn.CrossEntropyLoss().to(device)
-    optimizer = torch.optim.SGD(net.parameters(), lr=lr)
+
+    if optimizer == "sgd":
+        optimizer = torch.optim.SGD(net.parameters(),lr=lr)
+    elif optimizer == "adam":
+        optimizer = torch.optim.Adam(net.parameters(),lr=lr)
+
     net.train()
 
     if global_params is not None:
         global_params = [p.detach().to(device) for p in global_params]
 
-    if num_batches > len(trainloader):
+    if num_batches > len(trainloader) or num_batches == -1:
         num_batches = len(trainloader)
     
     all_inputs = []

@@ -17,20 +17,21 @@ serverapp = "pytorchexample.server_app:app"
 clientapp = "pytorchexample.client_app:app"
 
 [tool.flwr.app.config]
-experiment-name = "attack-experiment-batch-size-lbfgs"
+experiment-name = "7-attack-across-dimensions-sgd-fedavg"
 num-clients = 10
 run-inversion = true
 seed = 2
 num-server-rounds = 2
 fraction-evaluate = 0.5
+optimizer = "sgd"
 learning-rate = 0.001
 weight-decay = 0
 prox-mu = 0
 local-epochs = 1
 local-batches = 1
-batch-size = 64
+batch-size = 1
 shuffle = false
-window-size = 30
+window-size = 20
 epsilon = 0
 delta = 0
 clipping_norm = 0
@@ -40,6 +41,7 @@ attack-rounds = 25
 attack-max-iter = 5
 attack-history-size = 10
 attack-reg = 0
+num-clients-to-attack = 10
 
 [tool.hatch.build.targets.wheel]
 packages = [ ".",]

@@ -81,6 +81,7 @@ class CustomFedAvg(FedAvg):
         attack_max_iter = train_config["attack_max_iter"]
         attack_history_size = train_config["attack_history_size"]
         shuffle_train = train_config["shuffle"]
+        num_clients_to_attack = train_config["num_clients_to_attack"]
         seed = train_config["seed"]
 
         evaluate_config = ConfigRecord() if evaluate_config is None else evaluate_config
@@ -110,6 +111,7 @@ class CustomFedAvg(FedAvg):
         client_training_labels: dict[int, list[dict]] = {}
 
         
+        clients_to_attack = []
         # This will be used to evaluate the inversion attack
         for current_round in range(1, num_rounds + 1):
             log(INFO, "")
@@ -191,9 +193,16 @@ class CustomFedAvg(FedAvg):
 
             valid_replies, _ = self._check_and_log_replies(train_replies, is_train=True)
             if valid_replies:
+                num_clients_attacked = 0
                 for m in valid_replies:
                     if m.has_content():
                         node_id = m.metadata.src_node_id
+                        if len(clients_to_attack) < num_clients_to_attack and node_id not in clients_to_attack:
+                            clients_to_attack.append(node_id)
+
+                        if node_id not in clients_to_attack:
+                            continue
+
                         # Get original inputs, original labels and tensor shapes for evaluation
                         config_record = m.content["train_metadata"]
                         metadata_bytes = config_record["meta"]
@@ -263,6 +272,10 @@ class CustomFedAvg(FedAvg):
                         all_dlg_cossim_pcc.append(dlg_cossim_pcc)
                         recovery_stats_per_client_dlg_cossim[node_id] = (dlg_cossim_mse, dlg_cossim_pcc) 
 
+                        num_clients_attacked += 1
+
+                        if num_clients_attacked >= num_clients_to_attack:
+                            break
 
             dlg_mse_avg = sum(all_dlg_mse) / len(all_dlg_mse)
             dlg_pcc_avg = sum(all_dlg_pcc) / len(all_dlg_pcc)

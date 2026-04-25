@@ -39,19 +39,19 @@ def make_plot(epsilon: int, client_metrics: dict[int, dict], y_label:str):
     clients = client_metrics.keys()
     for client in clients:
         if y_label == "accuracy":
-            if client > 50:
-                rounds = client_metrics[client].keys()
-                losses = client_metrics[client].values()
-                lines += ax.plot(
-                        rounds, 
-                        losses, 
-                        label=f"{client} clients", 
-                        marker=styles[client]["marker"], 
-                        color=styles[client]["color"],
-                        linestyle=styles[client]["linestyle"],
-                        linewidth=1.5,
-                        markersize=4
-                ) 
+            #if client > 50:
+            rounds = client_metrics[client].keys()
+            losses = client_metrics[client].values()
+            lines += ax.plot(
+                    rounds, 
+                    losses, 
+                    label=f"{client} clients", 
+                    marker=styles[client]["marker"], 
+                    color=styles[client]["color"],
+                    linestyle=styles[client]["linestyle"],
+                    linewidth=1.5,
+                    markersize=4
+            ) 
         else:
             rounds = client_metrics[client].keys()
             losses = client_metrics[client].values()
@@ -77,12 +77,45 @@ def make_plot(epsilon: int, client_metrics: dict[int, dict], y_label:str):
     fig.supylabel(f"{y_label}",x=0.02)
     fig.suptitle(f"{y_label} Over Rounds (epsilon={epsilon})",y=0.97)
     plt.grid(True)
-    plt.savefig(f"figures/{y_label}_over_rounds_eps_{epsilon}.png", bbox_inches='tight')
+    plt.savefig(f"figures/{y_label}_over_rounds_eps_{epsilon}_adam.png", bbox_inches='tight')
 
 
+def make_acc_over_clients_plot(acc_over_clients: dict[float, dict[int, float]], optimizer:str):
+    lines = []
+    fig, ax = plt.subplots()
+    styles = {
+            0: ("black", "-", "o"),                # no dp
+            10: ("#0072B2", "--", "s"),             # eps = 10
+            7.5: ("#D55E00", "-.", "^"),             # eps = 7.5
+            5: ("#009E73", ":", "D"),              # eps = 5
+            2.5: ("#CC79A7", (0,(3,1,1,1)), "x")     # eps = 2.5
+    } 
+    plt.rcParams.update({
+        "font.size": 11,
+        "font.family": "sans-serif"
+    })
+
+    X = []
+
+    for eps, client_acc in acc_over_clients.items():
+        if len(X) == 0:
+            X = sorted(client_acc.keys())
+        y = [client_acc[clients] for clients in X]
+        label = "no dp" if eps == 0 else f"eps = {eps}"
+        color, linestyle, marker = styles[eps]
+        ax.plot(X, y, label=label, color=color, linestyle=linestyle, marker=marker, linewidth=1.5, markersize=4) 
+
+
+    ax.grid(True, linestyle='--', linewidth=0.5, alpha=0.75)
+    fig.legend(loc="center right", bbox_to_anchor=(1.125,0.5))
+    fig.supxlabel("Number of Clients",y=0.00)
+    fig.supylabel("Acc", x=0.02)
+
+
+    plt.savefig(f"figures/acc-over-clients-{optimizer}.png", bbox_inches='tight')
 
     
-def evaluate_result(experiment_name: str):
+def evaluate_learning_over_rounds(experiment_name: str):
     # For each pair of (epsilon,num_clients) record the accuracy and loss over the training rounds
     loss_over_rounds: dict[tuple(float,int),list[float]] = {}
     acc_over_rounds: dict[tuple(float,int),list[float]] = {}
@@ -147,4 +180,61 @@ def evaluate_result(experiment_name: str):
         make_plot(k, v, "accuracy")        
 
 
-evaluate_result("vary-noise-model-sgd-fedavg")
+def evaluate_accuracy_over_clients(experiment_name:str, baseline_name: str, optimizer:str):
+    acc_over_clients: dict[float, dict[int,float]] = {}
+    runs = [] 
+    cwd = os.getcwd()
+
+    ## Get Baseline
+    with open(f"{cwd}/results/{baseline_name}.jsonl", "r") as f:
+        for line in f:
+            if not line.strip(): continue
+
+            result = json.loads(line)
+            config = result.get("config",{}) 
+            num_clients = config.get("num-clients")
+            rounds = config.get("num-server-rounds")
+            flwr_str = result.get("flwr_results", "")
+
+            round_server_metrics = extract_metric_record(flwr_str, "ServerApp-side Evaluate Metrics")[rounds]
+            final_accuracy = float(round_server_metrics.get("accuracy"))
+
+            # eps=0
+            if 0 not in acc_over_clients:
+                acc_over_clients[0] = {num_clients: final_accuracy}
+            elif num_clients not in acc_over_clients[0]:
+                acc_over_clients[0][num_clients] = final_accuracy
+
+
+
+    # Get Noisy Results
+    with open(f"{cwd}/results/{experiment_name}.jsonl","r") as f:
+        for line in f: 
+            if not line.strip(): continue
+
+            result = json.loads(line)
+            # Get relevant hyperparameters
+            config = result.get("config",{})
+            epsilon = config.get("epsilon")
+            num_clients = config.get("num-clients")
+            parameters = { 
+                "epsilon": epsilon,
+                "num-clients": num_clients          
+            }
+
+            # Extract server metrics
+            rounds = config.get("num-server-rounds")
+            flwr_str = result.get("flwr_results","")
+
+            round_server_metrics = extract_metric_record(flwr_str, "ServerApp-side Evaluate Metrics")[rounds]
+            final_accuracy = float(round_server_metrics.get("accuracy"))
+            if epsilon not in acc_over_clients:
+                acc_over_clients[epsilon] = {num_clients: final_accuracy}
+            acc_over_clients[epsilon][num_clients] = final_accuracy
+
+        make_acc_over_clients_plot(acc_over_clients, optimizer=optimizer)
+
+
+evaluate_learning_over_rounds("5-vary-noise-across-clients-adam")
+evaluate_accuracy_over_clients("5-vary-noise-across-clients-adam", baseline_name="5-baseline-for-noise-across-clients-adam", optimizer="adam")
+evaluate_accuracy_over_clients("vary-noise-model-sgd-fedavg", baseline_name="sgd-baseline-fedavg-across-clients", optimizer="sgd")

@@ -26,7 +26,7 @@ def extract_metric_record(results_str, section):
 
 runs = [] 
 cwd = os.getcwd()
-with open(f"{cwd}/results/tune-attack-lbfgs.jsonl","r") as f:
+with open(f"{cwd}/results/7-attack-across-dimensions-sgd-fedavg.jsonl","r") as f:
     for line in f: 
         if not line.strip(): continue
 
@@ -34,10 +34,10 @@ with open(f"{cwd}/results/tune-attack-lbfgs.jsonl","r") as f:
         # Get relevant hyperparameters
         config = result.get("config",{})
         parameters = { 
-            "attack-lr": config.get("attack-lr"),
-            "attack-rounds": config.get("attack-rounds"),
-            "attack-max-iter": config.get("attack-max-iter"),
-            "attack-history-size": config.get("attack-history-size")
+            "batch-size": int(config.get("batch-size")),
+            "local-epochs": int(config.get("local-epochs")),
+            "local-batches": int(config.get("local-batches")),
+            "window-size": int(config.get("window-size")) 
             #"attack-reg": config.get("attack-reg")
         }
 
@@ -47,24 +47,24 @@ with open(f"{cwd}/results/tune-attack-lbfgs.jsonl","r") as f:
         final_server_metrics = extract_metric_record(flwr_str, "ServerApp-side Evaluate Metrics")        
         multi_round_attack_metrics = final_server_metrics[-1]
         multi_round_attack_metrics = {
-                "multi_mse_avg": multi_round_attack_metrics.get("multi_mse_avg"),
+                "multi_mse_avg": float(multi_round_attack_metrics.get("multi_mse_avg")),
                 "multi_mse_min": float(multi_round_attack_metrics.get("multi_mse_min")),
-                "multi_pcc_avg": multi_round_attack_metrics.get("multi_pcc_avg"),
-                #"multi_pcc_min": float(multi_round_attack_metrics.get("multi_pcc_min")),
-                #"multi_pcc_max": float(multi_round_attack_metrics.get("multi_pcc_max")),
+                "multi_pcc_avg": float(multi_round_attack_metrics.get("multi_pcc_avg")),
+               # "multi_pcc_min": float(multi_round_attack_metrics.get("multi_pcc_min")),
+               # "multi_pcc_max": float(multi_round_attack_metrics.get("multi_pcc_max")),
         }
         other_metrics = final_server_metrics[rounds]
         dlg_metrics = {
-                "dlg_mse_avg": other_metrics.get("dlg_mse_avg"),
+                "dlg_mse_avg": float(other_metrics.get("dlg_mse_avg")),
                 "dlg_mse_min": float(other_metrics.get("dlg_mse_min")),
-                "dlg_pcc_avg": other_metrics.get("dlg_pcc_avg"),
-               # "dlg_pcc_min": float(other_metrics.get("dlg_pcc_min")),
-               # "dlg_pcc_max": float(other_metrics.get("dlg_pcc_max"))
+                "dlg_pcc_avg": float(other_metrics.get("dlg_pcc_avg")),
+                #"dlg_pcc_min": float(other_metrics.get("dlg_pcc_min")),
+                #"dlg_pcc_max": float(other_metrics.get("dlg_pcc_max"))
         }
         dlg_cossim_metrics = {
-                "dlg_cossim_mse_avg": other_metrics.get("dlg_cossim_mse_avg"),
+                "dlg_cossim_mse_avg": float(other_metrics.get("dlg_cossim_mse_avg")),
                 "dlg_cossim_mse_min": float(other_metrics.get("dlg_cossim_mse_min")),
-                "dlg_cossim_pcc_avg": other_metrics.get("dlg_cossim_pcc_avg"),
+                "dlg_cossim_pcc_avg": float(other_metrics.get("dlg_cossim_pcc_avg")),
                # "dlg_cossim_pcc_min": float(other_metrics.get("dlg_cossim_pcc_min")),
                # "dlg_cossim_pcc_max": float(other_metrics.get("dlg_cossim_pcc_max"))
         }
@@ -72,12 +72,12 @@ with open(f"{cwd}/results/tune-attack-lbfgs.jsonl","r") as f:
         runs.append({
             "parameters": parameters, 
             "multi_round_attack_metrics": multi_round_attack_metrics,
-            "dlg_attack_metrics": dlg_metrics,
+            "dlg_metrics": dlg_metrics,
             "dlg_cossim_metrics": dlg_cossim_metrics
         })
 
-sorted_runs = sorted(runs, key=lambda item: item["dlg_attack_metrics"]["dlg_mse_avg"])
+#sorted_runs = sorted(runs, key=lambda item: item["dlg_metrics"]["dlg_mse_avg"])
 print(f"======== HIGHEST PERFORMING RUNS BY FINAL GLOBAL ACCURACY ========\n\n")
-for i, run in enumerate(sorted_runs):
-    print(f"rank: {i} \n\tparameters: {run["parameters"]} \n\tmulti round attack metrics: {run["multi_round_attack_metrics"]} \n\tdlg attack metrics: {run["dlg_attack_metrics"]} \n\tdlg cossim metrics: {run["dlg_cossim_metrics"]}")
+for i, run in enumerate(runs):
+    print(f"rank: {i} \n\tparameters: {run["parameters"]} \n\tmulti round attack metrics: {run["multi_round_attack_metrics"]} \n\tdlg attack metrics: {run["dlg_metrics"]} \n\tdlg cossim metrics: {run["dlg_cossim_metrics"]}")
 

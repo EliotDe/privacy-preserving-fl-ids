@@ -20,6 +20,7 @@ class LocalTrainingStrategy(ABC):
 class LocalTrainingNormal(LocalTrainingStrategy):
 
     def train(self, msg: Message, context: Context, model: NN, trainloader, device, prox_mu=0, global_params=None): 
+        optimizer = context.run_config["optimizer"]
         train_loss = train_fn(
             model,
             trainloader,
@@ -27,6 +28,7 @@ class LocalTrainingNormal(LocalTrainingStrategy):
             msg.content["config"]["lr"],
             #msg.content["config"]["weight_decay"],
             device,
+            optimizer=optimizer
         )
 
         # Only do this if using noise
@@ -60,6 +62,7 @@ class LocalTrainingNormal(LocalTrainingStrategy):
 class LocalTrainingWithInversion(LocalTrainingStrategy):
     def train(self, msg: Message, context: Context, model: NN, trainloader, device, prox_mu=0, global_params=None):
         num_local_batches = int(context.run_config["local-batches"])
+        optimizer = context.run_config["optimizer"]
         train_metadata = inv_train_fn(
            model,
            trainloader,
@@ -68,7 +71,8 @@ class LocalTrainingWithInversion(LocalTrainingStrategy):
            lr=msg.content["config"]["lr"],
            device=device,
            prox_mu=prox_mu,
-           global_params=global_params
+           global_params=global_params,
+           optimizer=optimizer
         )
         
         train_loss = asdict(train_metadata)["train_loss"]
@@ -101,6 +105,7 @@ class LocalTrainingWithInversion(LocalTrainingStrategy):
 class LocalTrainingWithProxMu(LocalTrainingStrategy):
     def train(self, msg: Message, context: Context, model: NN, trainloader, device, prox_mu=0,global_params=None):
         num_local_batches = int(context.run_config["local-batches"])
+        optimizer = context.run_config["optimizer"]
         train_metadata = inv_train_fn(
            model,
            trainloader,
@@ -109,7 +114,8 @@ class LocalTrainingWithProxMu(LocalTrainingStrategy):
            lr=msg.content["config"]["lr"],
            device=device,
            prox_mu=prox_mu,
-           global_params=global_params
+           global_params=global_params,
+           optimizer=optimizer
         )
         
         train_loss = asdict(train_metadata)["train_loss"]

@@ -23,7 +23,7 @@ def extract_metric_record(results_str, section):
 
 runs = [] 
 cwd = os.getcwd()
-with open(f"{cwd}/results/tune-noise-100-clients.jsonl","r") as f:
+with open(f"{cwd}/results/3-tune-noise-adam-fedavg.jsonl","r") as f:
     for line in f: 
         if not line.strip(): continue
 
@@ -42,14 +42,16 @@ with open(f"{cwd}/results/tune-noise-100-clients.jsonl","r") as f:
         final_server_metrics = extract_metric_record(flwr_str, "ServerApp-side Evaluate Metrics")[rounds]        
         accuracy = float(final_server_metrics.get("accuracy"))
         loss = float(final_server_metrics.get("loss"))
+        f1_score = float(final_server_metrics.get("f1-score"))
 
         runs.append({
             "parameters": parameters, 
             "final-accuracy": accuracy,
-            "loss": loss
+            "loss": loss,
+            "f1-score": f1_score
         })
 
 sorted_runs = sorted(runs, key=lambda item: item["final-accuracy"], reverse=True)
 print(f"======== HIGHEST PERFORMING RUNS BY FINAL GLOBAL ACCURACY ========\n\n")
 for i, run in enumerate(sorted_runs):
-    print(f"rank: {i} \tparameters: {run["parameters"]} \taccuracy: {run["final-accuracy"]}")
+    print(f"rank: {i} \tparameters: {run["parameters"]} \taccuracy: {run["final-accuracy"]} \tf1-score: {run["f1-score"]} \tfinal-loss: {run["loss"]}")

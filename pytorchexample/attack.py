@@ -103,6 +103,7 @@ def fed_avg_attack(origin_params, num_training_rounds, weight_at_timestamp, grad
             optimizer.zero_grad()
             grad_diffs = []
             for t in range(num_training_rounds):
+                #print(f"attacking t:{t}")
                 local_model = NN().to(device)
                 local_model.load_state_dict(weight_at_timestamp[t])
                 dummy_pred = local_model(dummy_data)
@@ -110,6 +111,7 @@ def fed_avg_attack(origin_params, num_training_rounds, weight_at_timestamp, grad
                 dummy_grad = grad(dummy_loss, local_model.parameters(), create_graph=True)
                 grad_diff = sum(((dummy_grad - client_gradient_at_t) ** 2).sum() \
                         for dummy_grad, client_gradient_at_t in zip(dummy_grad, gradient_at_timestamp[t]))
+
                 grad_diffs.append(grad_diff)
 
             diff = sum(grad_diffs) / num_training_rounds 
