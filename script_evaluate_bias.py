@@ -69,7 +69,7 @@ def get_acc_per_class(round_server_metrics):
 
 
     
-def evaluate_result(no_noise_experiment_name: str, noise_experiment_name: str, fig_name: str, save_to: str):
+def evaluate_result(no_noise_experiment_name: str, noise_experiment_name: str, fig_name: str):
     runs = {} 
     cwd = os.getcwd()
 
@@ -79,6 +79,7 @@ def evaluate_result(no_noise_experiment_name: str, noise_experiment_name: str, f
     ]
 
 
+    # Get Baseline
     with open(f"{cwd}/results/{no_noise_experiment_name}.jsonl","r") as f:
         for line in f:
             if not line.strip(): continue
@@ -99,7 +100,8 @@ def evaluate_result(no_noise_experiment_name: str, noise_experiment_name: str, f
             round_server_metrics = extract_metric_record(flwr_str, "ServerApp-side Evaluate Metrics")[rounds]
             
             accuracy_per_class = get_acc_per_class(round_server_metrics) 
-            runs["No Noise"] = accuracy_per_class
+            #runs["No Noise"] = accuracy_per_class
+            no_noise_acc_per_class = accuracy_per_class
 
     
     with open(f"{cwd}/results/{noise_experiment_name}.jsonl","r") as f:
@@ -111,6 +113,7 @@ def evaluate_result(no_noise_experiment_name: str, noise_experiment_name: str, f
             config = result.get("config",{})
             epsilon = config.get("epsilon")
             num_clients = config.get("num-clients")
+            prox_mu = config.get("prox-mu")
 
             if num_clients != 150:
                 continue
@@ -122,10 +125,17 @@ def evaluate_result(no_noise_experiment_name: str, noise_experiment_name: str, f
             round_server_metrics = extract_metric_record(flwr_str, "ServerApp-side Evaluate Metrics")[rounds]
             
             accuracy_per_class = get_acc_per_class(round_server_metrics)
-            runs[f"eps = {epsilon}"] = accuracy_per_class
+            
+            if prox_mu not in runs:
+                runs[prox_mu] = {}
+            runs[prox_mu][f"eps = {epsilon}"] = accuracy_per_class
 
-     
-    generate_polar_plot(runs, categories, fig_name=fig_name, save_to=save_to)
+    count = 0 
+    for prox_mu, eps_acc_perclass_dict in runs.items():
+        # Add baseline 
+        eps_acc_perclass_dict["No Noise"] = no_noise_acc_per_class 
+        generate_polar_plot(eps_acc_perclass_dict, categories, fig_name=f"{fig_name} prox-mu: {prox_mu}", save_to=f"figures/acc_per_class_{count}.png")
+        count += 1
 
-evaluate_result("sgd-baseline-fedavg-across-clients" , "vary-noise-model-sgd-fedavg", fig_name="Acc Per Class -- FedAvg", save_to="figures/acc_per_class_fedavg.png")
-evaluate_result("sgd-baseline-fedavg-across-clients" , "vary-noise-model-sgd-fedprox", fig_name="Acc Per Class -- FedProx", save_to="figures/acc_per_class_fedprox.png")
+evaluate_result("sgd-baseline-fedavg-across-clients" , "vary-noise-model-sgd-fedavg", fig_name="Acc Per Class -- FedAvg")
+evaluate_result("sgd-baseline-fedavg-across-clients" , "vary-noise-model-sgd-fedprox", fig_name="Acc Per Class -- FedProx")
