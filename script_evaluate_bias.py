@@ -30,7 +30,7 @@ def generate_polar_plot(data: dict[float, list[float]], categories, fig_name:str
             theta=categories + [categories[0]],
             fill='toself',
             name=name,
-            opacity=0.7
+            opacity=0.5
         ))
     fig.update_layout(
         title=fig_name,
@@ -80,6 +80,7 @@ def evaluate_result(no_noise_experiment_name: str, noise_experiment_name: str, f
 
 
     # Get Baseline
+    baselines{}
     with open(f"{cwd}/results/{no_noise_experiment_name}.jsonl","r") as f:
         for line in f:
             if not line.strip(): continue
@@ -90,7 +91,7 @@ def evaluate_result(no_noise_experiment_name: str, noise_experiment_name: str, f
             epsilon = config.get("epsilon")
             num_clients = config.get("num-clients")
             
-            if num_clients != 150:
+            if num_clients != 150 or num_clients != 10:
                 continue
 
             # Extract server metrics
@@ -101,7 +102,7 @@ def evaluate_result(no_noise_experiment_name: str, noise_experiment_name: str, f
             
             accuracy_per_class = get_acc_per_class(round_server_metrics) 
             #runs["No Noise"] = accuracy_per_class
-            no_noise_acc_per_class = accuracy_per_class
+            baselines[f"No Noise {num_clients} Clients"]= accuracy_per_class
 
     
     with open(f"{cwd}/results/{noise_experiment_name}.jsonl","r") as f:
@@ -132,8 +133,9 @@ def evaluate_result(no_noise_experiment_name: str, noise_experiment_name: str, f
 
     count = 0 
     for prox_mu, eps_acc_perclass_dict in runs.items():
-        # Add baseline 
-        eps_acc_perclass_dict["No Noise"] = no_noise_acc_per_class 
+        # Add baselines 
+        eps_acc_perclass_dict["No Noise 150 Clients"] = no_noise_acc_per_class["No Noise 150 Clients"] 
+        eps_acc_perclass_dict["No Noise 10 Clients"] = no_noise_acc_per_class["No Noise 10 Clients"] 
         generate_polar_plot(eps_acc_perclass_dict, categories, fig_name=f"{fig_name} prox-mu: {prox_mu}", save_to=f"figures/acc_per_class_{count}.png")
         count += 1
 
