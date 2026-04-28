@@ -1,5 +1,6 @@
 datasets==4.6.0
-flwr==1.29.0
+flwr==1.26.1
+flwr[simulation]==1.26.1
 flwr_datasets==0.6.0
 matplotlib==3.10.9
 numpy==2.4.4
