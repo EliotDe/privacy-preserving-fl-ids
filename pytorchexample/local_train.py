@@ -162,8 +162,3 @@ class LocalTrainingContext():
 
     def train(self, msg: Message, context: Context, model: NN, trainloader, device, prox_mu=0, global_params=None):
         return self._strategy.train(msg=msg, context=context, model=model, trainloader=trainloader, device=device, prox_mu=prox_mu,global_params=global_params)
-
-
-   
-
-

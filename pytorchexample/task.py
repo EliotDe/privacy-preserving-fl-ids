@@ -432,5 +432,3 @@ def get_and_parse_config_yaml():
     with open('experiment_config.yaml','r') as f:
         experiment_cfg = yaml.full_load(f)
     return experiment_cfg
-
-

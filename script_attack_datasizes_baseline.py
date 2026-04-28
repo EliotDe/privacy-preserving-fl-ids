@@ -52,6 +52,3 @@ with open("pyproject.toml", "w") as f:
     toml.dump(cfg, f)
 
 proc = subprocess.run(["flwr", "run"])
-
-
-

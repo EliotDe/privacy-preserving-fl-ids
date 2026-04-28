@@ -375,5 +375,3 @@ class CustomFedProx(FedProx):
         log(INFO, "")
 
         return result
-
-

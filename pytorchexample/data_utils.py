@@ -37,4 +37,3 @@ def set_windows(dataset: Dataset, window_size: int, threshold_for_unrelated_s: i
     df.fillna(0)
 
     return Dataset.from_pandas(df,preserve_index=False)
-

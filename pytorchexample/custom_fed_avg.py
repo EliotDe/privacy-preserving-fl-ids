@@ -389,5 +389,3 @@ class CustomFedAvg(FedAvg):
         log(INFO, "")
 
         return result
-
-
