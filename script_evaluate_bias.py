@@ -144,6 +144,4 @@ def evaluate_result(no_noise_experiment_name: str, noise_experiment_name: str, f
         generate_polar_plot(eps_acc_perclass_dict, categories, fig_name=f"{fig_name} prox-mu: {prox_mu}", save_to=f"figures/acc_per_class_{count}.png")
         count += 1
 
-#evaluate_result("sgd-baseline-fedavg-across-clients" , "vary-noise-model-sgd-fedavg", fig_name="Acc Per Class -- FedAvg")
-#evaluate_result("sgd-baseline-fedavg-across-clients" , "vary-noise-model-sgd-fedprox", fig_name="Acc Per Class -- FedProx")
 evaluate_result("5-baseline-for-noise-across-clients-adam","6-vary-noise-across-150-clients-adam-fedprox(1)",fig_name="Acc Per Class")
