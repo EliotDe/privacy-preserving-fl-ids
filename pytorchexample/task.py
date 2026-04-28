@@ -1,5 +1,10 @@
 """
+This file contains core functionality and classes.
 
+It defines the model -- NN
+It defines a CustomDataset class which loads windows instead of records.
+It defines load_data() methods for the global dataset and for local datasets.
+It defines the core training and evaluation functionality.
 """
 
 import os
@@ -12,7 +17,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from datasets import load_dataset
 from flwr_datasets import FederatedDataset
-#from flwr_datasets.partitioner import IidPartitioner
 from .temporal_partitioner import TemporalPartitioner
 from torch.utils.data import Dataset,DataLoader
 from sklearn.preprocessing import StandardScaler, LabelEncoder
@@ -22,8 +26,16 @@ from pytorchexample.data_utils import set_windows
 #from torchvision.transforms import Compose, Normalize, ToTensor
 
 THRESHOLD_FOR_UNRELATED_S = 600   # At what difference in seconds do we consider two records temporally unrelated
+fds = None  # Cache FederatedDataset
+partitioner = None
+scaler = StandardScaler()
+le = LabelEncoder()
+fitted = False
 
 class CustomDataset(Dataset):
+    """
+    Loads partitions instead of records
+    """
     def __init__(self,inputs,labels,window_size):
         self.labels = torch.tensor(labels,dtype=torch.long)
         self.inputs = torch.tensor(inputs.values, dtype=torch.float32)
@@ -34,21 +46,26 @@ class CustomDataset(Dataset):
 
     def __getitem__(self,idx):
         x = self.inputs[idx*self.window: (idx+1)*self.window].T
-        y = self.labels[idx*self.window]  # All types in a window are consistent
+        y = self.labels[idx*self.window]
         return x,y
 
 
 
 class NN(nn.Module):
+    """
+    TODO: If you are running a differential privacy experiment you should 
+          remove batch normalisation layers
+    """
     def __init__(self):
         super().__init__()
         self.conv1 = nn.Conv1d(in_channels=34, out_channels=64, kernel_size=5)
-        
+        ## REMOVE IF RUNNING DP
         self.bn1 = nn.BatchNorm1d(64)
         self.conv2 = nn.Conv1d(in_channels=64, out_channels=128, kernel_size=3)
+        ## REMOVE IF RUNNING DP
         self.bn2 = nn.BatchNorm1d(128)
         self.conv3 = nn.Conv1d(in_channels=128, out_channels=256,kernel_size=2)
-
+        ## REMOVE IF RUNNING DP
         self.bn3 = nn.BatchNorm1d(256)
 
         self.pool = nn.MaxPool1d(kernel_size=2)
@@ -61,15 +78,19 @@ class NN(nn.Module):
         self.fc2 = nn.Linear(128,10)
 
     def forward(self, x):
+        ## COMMENT OUT IF RUNNING DP
         x = self.relu(self.bn1(self.conv1(x)))
+        ## UNCOMMENT IF RUNNING DP
 #        x = self.relu(self.conv1(x))
         x = self.pool(x)
-
+        ## COMMENT OUT IF RUNNING DP
         x = self.relu(self.bn2(self.conv2(x)))
+        ## UNCOMMENT IF RUNNING DP
 #        x = self.relu(self.conv2(x))
         x = self.pool(x)
-
+        ## COMMENT OUT IF RUNNING DP
         x = self.relu(self.bn3(self.conv3(x)))
+        ## UNCOMMENT IF RUNNING DP
 #        x = self.relu(self.conv3(x))
         x = self.pool(x)
 
@@ -83,23 +104,17 @@ class NN(nn.Module):
         
         return x
 
-
-fds = None  # Cache FederatedDataset
-partitioner = None
-scaler = StandardScaler()
-le = LabelEncoder()
-fitted = False
-
 def fit_global_transforms(dataset):
     df = dataset.to_pandas()
-    #print(f"====== FIT GLOBAL TRANSFORMS =====\n\t ----> df.head(): \n {df.head}")
     labels = df["type"]
-    features = df.drop(columns=["type","ts","label"])#,"window_id","delta_t"])
+    features = df.drop(columns=["type","ts","label"])
     scaler.fit(features)
     le.fit(labels)
 
+
 def is_feature(feat) -> bool:
     return feat != "type" and feat != "ts" and feat!="label"
+
 
 def apply_transforms(batch):
     labels = batch["type"]
@@ -119,27 +134,19 @@ def apply_transforms(batch):
 def get_class_names_from_labels(labels):
     return le.inverse_transform(labels)
 
+
 def get_class_names():
     return le.classes_
-
 
     
 def labeling_rule(window_types):
     type_set = set(window_types)
-    #if len(type_set) == 1 and "normal" in type_set:
-    #    return "normal"
-    #else:
-    #    for t in type_set:
-    #        if t != "normal":
-    #            return t
     if len(type_set) == 1 and "normal" in type_set:
         return "normal"
     elif "mitm" in type_set:
         return "mitm"
 
     return window_types.iloc[-1]
-
-
 
      
 def load_data(partition_id: int, num_partitions: int, batch_size: int, window_size: int, seed: int, shuffle_train=True):
@@ -157,12 +164,6 @@ def load_data(partition_id: int, num_partitions: int, batch_size: int, window_si
         )
         data_files = "dataset/processed_network.csv" 
         dataset = load_dataset("csv", data_files=data_files, split="train")
-        ## TODO: REMOVE THIS!!!
-    #    check_nan_dataset = dataset.to_pandas()
-        #print(f"NaNs in dataset before scaling: {check_nan_dataset.isna().sum().sum()}")
-        #print(f"NaNs per column:\n{check_nan_dataset.isna().sum()}")
-
-        #dataset = dataset.class_encode_column("type")
         partitioner.dataset = dataset
 
         if not fitted:
@@ -171,20 +172,13 @@ def load_data(partition_id: int, num_partitions: int, batch_size: int, window_si
 
         fds = dataset
 
-    partition = partitioner.load_partition(partition_id)#fds.load_partition(partition_id)
+    partition = partitioner.load_partition(partition_id)
     partition_df = partition.to_pandas()
-    #print(f"NaNs in partition before scaling: {partition_df.isna().sum().sum()}")
-    #print(f"NaNs per column:\n{partition_df.isna().sum()}")
-    #print(f"Inf values: {np.isinf(partition_df.values).sum()}")
-    #cwd = os.getcwd()
-    #if not os.path.isfile(f"{cwd}/dataset/{partition_id}.csv"):
-    #    partition_df.to_csv(f"{cwd}/dataset/{partition_id}.csv")
 
+    # Get the conditions for a stratified train-test partition
     p_window_types = partition_df.groupby("window_id")["type"].agg(labeling_rule).reset_index()
     y = p_window_types["type"]
     X = p_window_types["window_id"]
-
-    
     unique_classes, class_counts = np.unique(y,return_counts=True)
 
     n_samples = len(y)
@@ -193,8 +187,6 @@ def load_data(partition_id: int, num_partitions: int, batch_size: int, window_si
     test_size = 0.2
     n_test = math.ceil(n_samples * test_size)
     n_train = n_samples - n_test
-
-
 
     if n_classes < 2 or class_counts.min() < 2 or n_test < n_classes or n_train < n_classes:
         train_windows, test_windows = train_test_split(p_window_types['window_id'], test_size = test_size, random_state=seed)
@@ -212,12 +204,7 @@ def load_data(partition_id: int, num_partitions: int, batch_size: int, window_si
     y_test = test_df["type"]
 
     feature_cols = X_train.columns.to_list()
-    #print(f"NaNs in X_train before scaling: {X_train.isna().sum().sum()}")
-    #print(f"NaNs per column:\n{X_train.isna().sum()}")
-    #print(f"Inf values: {np.isinf(X_train.values).sum()}")
     X_train = scaler.transform(X_train)
-    #print(f"X_train mean: {X_train.mean():.4f}, std: {X_train.std():.4f}")
-    #print(f"X_train min: {X_train.min():.4f}, max: {X_train.max():.4f}")
     X_test = scaler.transform(X_test)
 
     y_train = le.transform(y_train)
@@ -239,7 +226,6 @@ def load_centralized_dataset(window_size: int):
     data_files = "dataset/processed_network.csv"
 
     dataset = load_dataset("csv", data_files=data_files, split="train")
-    #dataset = set_windows(dataset, window_size, THRESHOLD_FOR_UNRELATED_S, 'ts')
 
     if not fitted:
         fit_global_transforms(dataset)
@@ -397,9 +383,6 @@ def inversion_train(net, trainloader, num_batches, epochs, lr, device, prox_mu=0
     return meta 
 
 
-
-
-## TODO: Add accuracy per class
 def test(net, testloader, device):
     """Validate the model on the test set."""
     net.to(device)
@@ -424,11 +407,3 @@ def test(net, testloader, device):
     predictions = torch.cat(all_predictions)
     labels = torch.cat(all_labels)
     return loss, accuracy, predictions, labels
-
-
-def get_and_parse_config_yaml():
-    #print(f"\n\n\n\n{os.getcwd()}\n\n\n\n")
-    experiment_cfg = {}
-    with open('experiment_config.yaml','r') as f:
-        experiment_cfg = yaml.full_load(f)
-    return experiment_cfg

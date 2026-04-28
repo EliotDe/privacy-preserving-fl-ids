@@ -1,5 +1,5 @@
 """
-
+This file contains the core logic for running inversion attacks.
 """
 
 import os
@@ -14,7 +14,11 @@ from pytorchexample.task import NN
 from torch.autograd import grad
 
 def soft_label_cross_entropy(pred, true):
+    """
+    Predicted values need to be converted from raw logits to probabilites
+    """
     return torch.mean(torch.sum(- true * F.log_softmax(pred, dim=-1),1))
+
 
 def attack(origin_params, client_grad, input_shape, label_shape, num_classes, max_iter, history_size, rounds, reg_coeff, seed, lr=1.0, cosine_similarity=False):
     """
@@ -29,6 +33,7 @@ def attack(origin_params, client_grad, input_shape, label_shape, num_classes, ma
     random.seed(seed)
     np.random.seed(seed)
 
+    # Initialise dummy inputs
     dummy_data = torch.randn(input_shape).to(device).requires_grad_(True)
     initial_data = dummy_data.detach().clone()
     
@@ -51,15 +56,12 @@ def attack(origin_params, client_grad, input_shape, label_shape, num_classes, ma
             assert dummy_pred.shape == target.shape, (dummy_pred.shape, target.shape)
             dummy_loss = criterion(dummy_pred, F.softmax(dummy_label,dim=-1))
             dummy_grad = grad(dummy_loss, model.parameters(), create_graph=True)
-            shapes = [t.shape for t in dummy_grad]
+            #shapes = [t.shape for t in dummy_grad]
 
             if cosine_similarity:
-                # Dot Product
                 dot_prod = sum((d * c).sum() for d,c in zip(dummy_grad,client_grad))
-                # L2-Norms
                 dummy_norm_sq = sum(((d)**2).sum() for d in dummy_grad)
                 client_norm_sq = sum(((c)**2).sum() for c in client_grad)
-
                 # Cosine Similarity - Equation in torch docs: torch.nn.CosineSimilarity
                 grad_diff = dot_prod / max(dummy_norm_sq*client_norm_sq, 1e-8)
             else:
@@ -78,7 +80,12 @@ def attack(origin_params, client_grad, input_shape, label_shape, num_classes, ma
 def fed_avg_attack(origin_params, num_training_rounds, weight_at_timestamp, gradient_at_timestamp, input_shape, label_shape, attack_rounds, max_iter, history_size, reg_coeff, seed, lr=1.0):
     """
     From the paper: Improved Gradient Inversion Attacks and Defenses in Federated Learning.
-    - The paper applies the attacks to multiple local training rounds where the server has access to intermediate weight and gradient updates, however we apply it to the federated learning process as a whole.
+        - The paper applies the attacks to multiple local training rounds where the server has access to intermediate weight and gradient updates, however we apply it to the federated learning process as a whole.
+
+    PARAM [weight_at_timestamp]: The original global model weights for each round
+    PARAM [gradient_at_timestamp]: Recovered client gradients for each round
+
+    RETURNS: recovered inputs, recovered labels, and the initial dummy data (for debugging)
     """
     device="cpu"
 
@@ -86,10 +93,11 @@ def fed_avg_attack(origin_params, num_training_rounds, weight_at_timestamp, grad
     random.seed(seed)
     np.random.seed(seed)
 
-    # Initialize Dummy Image
+    # Initialize Dummy Data
     dummy_data = torch.randn(input_shape).to(device).requires_grad_(True)
     initial_data = dummy_data.detach().clone()
     batch_size = label_shape[0]
+    # 10 for the number of attack types
     dummy_label = torch.randn(batch_size, 10).to(device).requires_grad_(True)
 
     optimizer = torch.optim.LBFGS([dummy_data, dummy_label], lr=lr,max_iter=max_iter,history_size=history_size,line_search_fn="strong_wolfe")
@@ -98,12 +106,15 @@ def fed_avg_attack(origin_params, num_training_rounds, weight_at_timestamp, grad
         def closure():
             optimizer.zero_grad()
             grad_diffs = []
+            # Re-trace the client's learning steps
             for t in range(num_training_rounds):
+                # Instantiate the model each time -- to avoid computation graph issues in pytorch
                 local_model = NN().to(device)
                 local_model.load_state_dict(weight_at_timestamp[t])
                 dummy_pred = local_model(dummy_data)
                 dummy_loss = criterion(dummy_pred, F.softmax(dummy_label,dim=-1))
                 dummy_grad = grad(dummy_loss, local_model.parameters(), create_graph=True)
+                # Calculate distance between original and dummy gradients
                 grad_diff = sum(((dummy_grad - client_gradient_at_t) ** 2).sum() \
                         for dummy_grad, client_gradient_at_t in zip(dummy_grad, gradient_at_timestamp[t]))
 
@@ -132,20 +143,20 @@ def evaluate_inversion(X, recovered_X, y, recovered_y, initial_dummy_data):
     # PCC between original and recovered
     X_pcc = torch.corrcoef(torch.stack((X.flatten(),recovered_X.flatten())))[0,1].item()
 
-
-    with open("inversion_debugging.txt","w") as f:
-        f.write("Dummy Data")
-        f.write("\n\n\n")
-        f.write(str(recovered_X))
-        f.write("\n\n\n")
-        f.write("Actual Data")
-        f.write("\n\n\n")
-        f.write(str(X))
-        f.write("\n\n\n")
-        f.write("Initial Dummy Data")
-        f.write("\n\n\n")
-        f.write(str(initial_dummy_data))
-        f.write("\n\n\n")
+    # NOTE: This is useful to see whether the attack learns beyond initial dummy data
+    # with open("inversion_debugging.txt","w") as f:
+    #     f.write("Dummy Data")
+    #     f.write("\n\n\n")
+    #     f.write(str(recovered_X))
+    #     f.write("\n\n\n")
+    #     f.write("Actual Data")
+    #     f.write("\n\n\n")
+    #     f.write(str(X))
+    #     f.write("\n\n\n")
+    #     f.write("Initial Dummy Data")
+    #     f.write("\n\n\n")
+    #     f.write(str(initial_dummy_data))
+    #     f.write("\n\n\n")
 
 
     return X_diff, X_pcc
@@ -155,6 +166,7 @@ def evaluate_inversion(X, recovered_X, y, recovered_y, initial_dummy_data):
 def get_client_grad(trained_params, origin_params, lr, timesteps):
     """
     Gradient estimation strategy in: Improved Gradient Inversion Attacks and Defenses in Federated Learning.
+    Essentially re-arrange the standard SGD weight update equation for the gradient.
     """
     client_grad: dict[str, NDArray] = {}
     shape = {}
@@ -170,7 +182,6 @@ def get_client_grad(trained_params, origin_params, lr, timesteps):
                 continue
             g = torch.from_numpy((client_grad[key] - value.numpy())/(lr*timesteps))
             
-            ## TODO: REMOVE THIS -- DEBUGGING
             client_grad[key] = (client_grad[key] - value.numpy())/lr
             shape[key] = client_grad[key].shape
 

@@ -1,12 +1,18 @@
+"""
+EVALUATE RESULTS FOR:
+
+EXPERIMENT #4: TUNE ATTACK -- NO BATCH NORM -- NO NOISE
+    - Fixed variables:
+        - FL optimizer = SGD
+        - Attack optimizer = LBFGS
+"""
+
 import os
 import re
 import ast
 import json
 import pandas as pd
 
-## 1. Read results
-## 2. Sort by accuracy
-## 3. Print hyperparameters (lr, batchsize, windowsize, local_epochs) & final accuracies
 
 def extract_metric_record(results_str, section):
     """
@@ -26,7 +32,7 @@ def extract_metric_record(results_str, section):
 
 runs = [] 
 cwd = os.getcwd()
-with open(f"{cwd}/results/tune-attack-lbfgs.jsonl","r") as f:
+with open(f"{cwd}/results/4-tune-attack-sgd-fedavg.jsonl","r") as f:
     for line in f: 
         if not line.strip(): continue
 

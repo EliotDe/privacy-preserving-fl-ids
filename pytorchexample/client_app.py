@@ -1,5 +1,5 @@
 """
-
+Instantiate the ClientApp app object and use decorators to "upload" train and evaluation functions
 """
 
 import torch
@@ -12,7 +12,6 @@ from pytorchexample.task import NN, load_data
 from pytorchexample.task import test as test_fn
 from pytorchexample.task import train as train_fn
 from pytorchexample.task import inversion_train as inv_train_fn
-from pytorchexample.task import get_and_parse_config_yaml
 from pytorchexample.train_process_metadata import TrainProcessMetadata
 from pytorchexample.local_train import LocalTrainingContext, LocalTrainingNormal, LocalTrainingWithInversion
 from pytorchexample.dynamic_dp_mod import DynamicDpMod
@@ -21,16 +20,16 @@ from pytorchexample.dynamic_dp_mod import DynamicDpMod
 app = ClientApp()
 
 
-
+## TODO: If you are running differential privacy experiments uncomment the dynamic dp modifier
+## TODO: If you aren't running with DP, comment them out.
 #local_dp_obj = DynamicDpMod()
 
+## TODO: If you are running the differential privacy experiments uncomment the modifier
+## TODO: If you aren't running with DP comment the modifier out.
 @app.train()#mods=[local_dp_obj])
 def train(msg: Message, context: Context):
     """Train the model on local data."""
     ## -------- Load the config and data----------##
-
-    ## NOTE: This is purely for experimental purposes; so that we can use a training function with more control on the local data being used -- in actuality the client would not know an attack is being run by the server
-    ## NOTE: I'm not sure the eval function is safe since it executes arbitrary inputs -- since its only used for local experimentation this is ok but it should not be used in production
     partition_id = context.node_config["partition-id"]
     num_partitions = context.node_config["num-partitions"]
     running_inversion = context.run_config["run-inversion"]
@@ -39,19 +38,18 @@ def train(msg: Message, context: Context):
     window_size = context.run_config["window-size"]
     seed = context.run_config["seed"]
     prox_mu = context.run_config["prox-mu"]
-
     trainloader, _ = load_data(partition_id, num_partitions, batch_size, window_size, train_shuffle, seed)
 
     # Load the model and initialize it with the received weights
     model = NN()
     model.load_state_dict(msg.content["arrays"].to_torch_state_dict())
 
+    # The regularizing term in Prox-Mu requires you to calculate the distance between the original global
+    # parameters and the learned parameters.
     if prox_mu != 0:
         global_params = copy.deepcopy(model).parameters()
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model.to(device)
-
-    
 
     # Call the training function
     if running_inversion:
@@ -71,7 +69,6 @@ def train(msg: Message, context: Context):
 @app.evaluate()
 def evaluate(msg: Message, context: Context):
     """Evaluate the model on local data."""
-
     # Load the model and initialize it with the received weights
     model = NN()
     model.load_state_dict(msg.content["arrays"].to_torch_state_dict())
@@ -82,7 +79,6 @@ def evaluate(msg: Message, context: Context):
     partition_id = context.node_config["partition-id"]
     num_partitions = context.node_config["num-partitions"]
     batch_size = context.run_config["batch-size"]
-    running_inversion = context.run_config["run-inversion"]
     window_size = context.run_config["window-size"]
     seed = context.run_config["seed"]
 

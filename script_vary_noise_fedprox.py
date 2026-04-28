@@ -40,7 +40,7 @@ for e in eps:
         with open("pyproject.toml") as f:
             cfg = toml.load(f)
 
-        cfg["tool"]["flwr"]["app"]["config"]["experiment-name"] = "6-vary-noise-across-150-clients-adam-fedprox(1)" 
+        cfg["tool"]["flwr"]["app"]["config"]["experiment-name"] = "6-vary-noise-across-150-clients-adam-fedprox" 
         cfg["tool"]["flwr"]["app"]["config"]["num-clients"] = clients 
         cfg["tool"]["flwr"]["app"]["config"]["shuffle"] = True 
         cfg["tool"]["flwr"]["app"]["config"]["num-server-rounds"] = 50 

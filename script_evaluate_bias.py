@@ -1,3 +1,12 @@
+"""
+EVALUATE RESULTS FOR:
+
+EXPERIMENT #6: HOW DOES FEDPROX MITIGATE BIAS ACROSS NOISE -- 150 CLIENTS -- NO BATCH NORM -- ADAM
+    - variables: prox_mu and epsilon
+    - fixed variables: num_clients = 150, optimizer = Adam
+        - I have ran the experiment with sgd already
+"""
+
 import os
 import re
 import ast
@@ -176,4 +185,4 @@ def evaluate_result(no_noise_experiment_name: str, noise_experiment_name: str, f
         generate_polar_plot(ordered_dict, categories, fig_name=f"{fig_name} prox-mu: {prox_mu}", save_to=f"figures/acc_per_class_{count}.png")
         count += 1
 
-evaluate_result("5-baseline-for-noise-across-clients-adam","6-vary-noise-across-150-clients-adam-fedprox(1)",fig_name="Acc Per Class")
+evaluate_result("5-baseline-for-noise-across-clients-adam","6-vary-noise-across-150-clients-adam-fedprox",fig_name="Acc Per Class")

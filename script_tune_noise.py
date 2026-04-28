@@ -1,7 +1,6 @@
 """
 BEFORE RUNNING THIS SCRIPT ENSURE YOU HAVE DONE THE FOLLOWING:
     - In pytorchexample/task.py you have removed the batch norm layer in NN and the method NN.forward()
-    - NOTE: I have included results for learning is affected by noise when including batch norm layers and using sgd
     - In pytorchexample/client_app.py you have added a noise modifier to the training decorator 
     - Ensure you are using Adam (as the note mentions this has been run for sgd already) 
 
@@ -48,8 +47,6 @@ for _ in range(runs):
     with open(config_path,"w") as f:
         toml.dump(cfg, f)
 
-
-
     with open("pyproject.toml") as f:
         cfg = toml.load(f)
 
@@ -77,9 +74,6 @@ for _ in range(runs):
     cfg["tool"]["flwr"]["app"]["config"]["delta"] = delta
     cfg["tool"]["flwr"]["app"]["config"]["sensitivity"] = sensitivity 
     cfg["tool"]["flwr"]["app"]["config"]["clipping_norm"] = clipping_norm 
-
-        
-
        
     with open("pyproject.toml", "w") as f:
         toml.dump(cfg, f)

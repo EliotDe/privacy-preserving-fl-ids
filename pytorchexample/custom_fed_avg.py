@@ -1,5 +1,8 @@
 """
+This defines the core logic for the custom federated learning framework.
 
+This is where client updates are received and parsed for the attacks. 
+It is also where we evaluate attacks and record metrics.
 """
 
 import io
@@ -77,6 +80,8 @@ class CustomFedAvg(FedAvg):
 
         # Initialize if None
         train_config = ConfigRecord() if train_config is None else train_config
+        
+        # Get parameters for learning and attacks
         lr = train_config['lr']
         attack_lr = train_config['attack_lr']
         attack_rounds = train_config["attack_rounds"]
@@ -91,6 +96,7 @@ class CustomFedAvg(FedAvg):
         result = Result()
 
         t_start = time.time()
+
         # Evaluate starting global parameters
         if evaluate_fn:
             res = evaluate_fn(0, initial_arrays)
@@ -120,6 +126,7 @@ class CustomFedAvg(FedAvg):
             log(INFO, "")
             log(INFO, "[ROUND %s/%s]", current_round, num_rounds)
 
+            # Deep copy of initial global parameters to avoid issues with pytorch's computational graph
             state = arrays.to_torch_state_dict()
             arrays_at_t = {k: v.detach().clone() for k,v in state.items()}
             server_params_over_time.append(arrays_at_t)
@@ -194,12 +201,16 @@ class CustomFedAvg(FedAvg):
             all_dlg_cossim_mse = []
             all_dlg_cossim_pcc = []
 
+            # Get responses from clients
             valid_replies, _ = self._check_and_log_replies(train_replies, is_train=True)
             if valid_replies:
                 num_clients_attacked = 0
                 for m in valid_replies:
                     if m.has_content():
+                        # Get the client id
                         node_id = m.metadata.src_node_id
+
+                        # Sample clients
                         if len(clients_to_attack) < num_clients_to_attack and node_id not in clients_to_attack:
                             clients_to_attack.append(node_id)
 
@@ -216,13 +227,12 @@ class CustomFedAvg(FedAvg):
                         y = train_meta["y"]
                         client_training_labels[node_id]=y
                         num_local_training_steps = train_meta["timestamps"]
-                        #log(INFO, "")
-                        #log(INFO, "Getting Client Gradients...")
                         # Get trained model parameters 
                         trained_params = m.content.array_records.values()
                         # Get and store recovered gradients
                         client_grad = get_client_grad(trained_params, origin_params, lr, num_local_training_steps) 
                         if node_id in grads_over_time:
+                            # Deep copy of gradients
                             grad_at_t = [g.detach().clone() for g in client_grad]
                             grads_over_time[node_id].append(grad_at_t)
                         else:

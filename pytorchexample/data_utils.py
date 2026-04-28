@@ -1,5 +1,6 @@
 """
-
+Windowing Logic is repeatedly used in the partitioner and while loading global data.
+This ensures consistency.
 """
 
 import numpy as np
@@ -8,7 +9,6 @@ from datasets import Dataset
 
 
 def set_windows(dataset: Dataset, window_size: int, threshold_for_unrelated_s: int, time_feature_name: str) -> Dataset:
-#    print(f"=======SETTING WINDOWS=======\n\t------> window size: {window_size}")
     # Convert dataset to dataframe
     df = dataset.to_pandas()
     df[time_feature_name] = pd.to_datetime(df[time_feature_name],unit='s')

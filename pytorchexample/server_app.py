@@ -8,7 +8,6 @@ from flwr.serverapp import Grid, ServerApp
 from flwr.serverapp.strategy import FedAvg, FedProx, Result
 from sklearn.metrics import confusion_matrix, f1_score
 from pytorchexample.task import NN, load_centralized_dataset, test, get_class_names_from_labels, get_class_names
-from pytorchexample.task import get_and_parse_config_yaml
 from pytorchexample.custom_fed_avg import CustomFedAvg
 from pytorchexample.custom_fed_prox import CustomFedProx
 
@@ -28,7 +27,6 @@ def main(grid: Grid, context: Context) -> None:
     """Main entry point for the ServerApp."""
 
     # Read run config
-    ## NOTE: I'm not sure the eval function is safe since it executes arbitrary inputs -- Since this is only intented for experimentation its ok but it shouldn't be used in production
     run_inversion_attack:  bool = context.run_config["run-inversion"]
     fraction_evaluate: float = context.run_config["fraction-evaluate"]
     num_rounds: int = context.run_config["num-server-rounds"]
@@ -49,8 +47,7 @@ def main(grid: Grid, context: Context) -> None:
     }
     arrays = ArrayRecord(state_dict)
 
-    # Initialize FedAvg strategy
-    #print(f"\n\n\nrun inversion attack config type: {type(experiment_cfg["inversion"]["run_inversion_attack"])}\n\n\n")
+    # Initialize FL strategy
     if run_inversion_attack:
         attack_lr = context.run_config["attack-lr"]
         attack_rounds = context.run_config["attack-rounds"]
@@ -96,7 +93,8 @@ def main(grid: Grid, context: Context) -> None:
 
 def get_evaluate_fn(window_size: int):
     """
-    Flower doesn't let you pass parameters to the evaluate_fn when instantiating a strategy. Instead of modifying flowers in-built strategies (FedAvg for example) I thought it would be better to use a closure.
+    Flower doesn't let you pass parameters to the evaluate_fn when instantiating a strategy. 
+    Instead of modifying flowers in-built strategies I use a closure.
     """
     def global_evaluate(server_round: int, arrays: ArrayRecord) -> MetricRecord:
         """Evaluate model on central data."""
@@ -142,11 +140,15 @@ def get_accuracy_per_class(y_pred,y_true,labels):
 
     return class_dict 
 
+
 def get_f1_score(y_pred, y_true,labels):
     return f1_score(y_true, y_pred, labels=labels, average='macro')
     
 
 def save_result(results: Result, context: Context):
+    """
+    This will append the results to existing runs in the logging file.
+    """
     res_str = str(results).replace("\n","").replace("\t"," ")
     experiment_name: str = context.run_config["experiment-name"]
     config = context.run_config

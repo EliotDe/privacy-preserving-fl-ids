@@ -1,3 +1,12 @@
+"""
+EVALUATE RESULTS FOR:
+
+EXPERIMENT #3: TUNE NOISE WITHOUT BATCH NORM - USING ADAM
+    - fixed variables: 
+        - num_clients = 100
+        - epsilon = 10
+"""
+
 import os
 import re
 import ast

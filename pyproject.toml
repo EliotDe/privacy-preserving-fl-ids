@@ -17,7 +17,7 @@ serverapp = "pytorchexample.server_app:app"
 clientapp = "pytorchexample.client_app:app"
 
 [tool.flwr.app.config]
-experiment-name = "7-attack-across-dimensions-sgd-fedavg"
+experiment-name = "test"
 num-clients = 10
 run-inversion = true
 seed = 2

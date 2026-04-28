@@ -1,3 +1,11 @@
+"""
+EVALUATE RESULTS FROM:
+
+EXPERIMENT #5: VARY NOISE ACROSS CLIENT NUMBER -- NO BATCH NORM -- NO ATTACK
+    - fixed variables: Adam Optimizer (I have already run the experiment for sgd and batch norm)
+         - Adam is less influenced by model initialisation and therefore by noise. It also seems to handle sparse local datasets better than SGD which is ideal for large numbers of clients in this experiment.
+"""
+
 import os
 import re
 import ast
@@ -237,4 +245,4 @@ def evaluate_accuracy_over_clients(experiment_name:str, baseline_name: str, opti
 
 evaluate_learning_over_rounds("5-vary-noise-across-clients-adam")
 evaluate_accuracy_over_clients("5-vary-noise-across-clients-adam", baseline_name="5-baseline-for-noise-across-clients-adam", optimizer="adam")
-evaluate_accuracy_over_clients("vary-noise-model-sgd-fedavg", baseline_name="sgd-baseline-fedavg-across-clients", optimizer="sgd")
+evaluate_accuracy_over_clients("5-vary-noise-model-sgd-fedavg", baseline_name="5-sgd-baseline-fedavg-across-clients", optimizer="sgd")

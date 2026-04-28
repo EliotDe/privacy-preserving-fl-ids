@@ -1,12 +1,19 @@
+"""
+EVALUATE RESULTS FOR:
+
+EXPERIMENT #7: RECOVERABLE INFORMATION FOR DIFFERENT TRAINING DATA DIMENSIONS
+    - Fixed variables: Fl optimizer - SGD (all variables apart from batch size, local_batches and local_epochs are fixed)
+
+EXPERIMENT #8: RECOVERABLE INFORMATION FOR DIFFERENT LEVELS OF NOISE 
+    - Fixed variables: Fl optimizer - SGD (all variables apart from batch size, local_batches and local_epochs are fixed)
+"""
+
 import os
 import re
 import ast
 import json
 import pandas as pd
 
-## 1. Read results
-## 2. Sort by accuracy
-## 3. Print hyperparameters (lr, batchsize, windowsize, local_epochs) & final accuracies
 
 def extract_metric_record(results_str, section):
     """

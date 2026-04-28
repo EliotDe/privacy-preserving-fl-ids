@@ -14,27 +14,8 @@ from pytorchexample.data_utils import set_windows
 
 class TemporalPartitioner(Partitioner):
     """
-    After defining a Dirichlet distribution over classes to determine the distributions for each client, I cluster windows based on aggregated temporal features. This allows us to maintain realistic temporal patterns between class transitions.  
-
-    Samples are sorted by timestamp. Adjusting the "i.i.d-ness" of the partitions is a matter of adjusting the alpha parameter in the Dirichlet distribution.
-
-    Parameters
-    __________
-    
-    num_partitions: int
-        Number of partitions to create
-    partition_by: str:
-        The timestamp label
-    strictness: float: 
-        Determines the how i.i.d. the partitions are
-
-
-
-    Examples 
-    ________
-
-    Examples
-    --------
+    This class generates non-i.i.d local datasets by applying a dirichlet partitioner
+    to windows. 
     """
 
     # TODO Fix kwargs
@@ -94,7 +75,6 @@ class TemporalPartitioner(Partitioner):
     def dataset(self, dataset: Dataset) -> None:
         # Add window_id feature 
         self._dataset = set_windows(dataset, self._window_size, self._threshold_for_unrelated_s, self._time_feature_name)
-
         # Construct the inner Dirichlet partitioner dataset
         window_type_df = self._dataset.to_pandas().groupby("window_id")["type"].agg(self._labeling_rule).reset_index()
         window_dataset = Dataset.from_pandas(window_type_df)
@@ -109,15 +89,16 @@ class TemporalPartitioner(Partitioner):
         if pid in self._pid_to_indices:
             return self._dataset.select(self._pid_to_indices[pid])
         else:
+            # Get window indices from the DirichletPartitioner
             inner_pid_indices = self._inner.load_partition(pid)
+            # Get indices for each record in the window
             expanded = set()
             for idx in inner_pid_indices:
                 start = idx*self._window_size
                 end = ((idx+1)*self._window_size) 
                 expanded.update(range(start,end))
-                #window_indices = [i for i in range(start,end)]
-                #inner_pid_indices = list(set(inner_pid_indices) | set(window_indices)) # Union
             indices = sorted(expanded)
-
-            self._pid_to_indices[pid] = indices #sorted(inner_pid_indices)
-            return self._dataset.select(indices)#inner_pid_indices)
+            # Record indices
+            self._pid_to_indices[pid] = indices
+            # Return the partition
+            return self._dataset.select(indices)

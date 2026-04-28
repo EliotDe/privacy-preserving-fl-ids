@@ -1,5 +1,11 @@
 """
+This defines the core logic for the custom federated learning framework.
 
+This is where client updates are received and parsed for the attacks. 
+It is also where we evaluate attacks and record metrics.
+
+It is mostly the same as the custom_fed_prox strategy except it is inhereted
+from the FedProx strategy, and so some underlying functionality is different.
 """
 
 import io
@@ -118,6 +124,7 @@ class CustomFedProx(FedProx):
             log(INFO, "")
             log(INFO, "[ROUND %s/%s]", current_round, num_rounds)
 
+            # Deep copy of initial global parameters to avoid issues with pytorch's computational graph
             state = arrays.to_torch_state_dict()
             arrays_at_t = {k: v.detach().clone() for k,v in state.items()}
             server_params_over_time.append(arrays_at_t)
@@ -192,10 +199,12 @@ class CustomFedProx(FedProx):
             all_dlg_cossim_mse = []
             all_dlg_cossim_pcc = []
 
+            # Get Clients Responses
             valid_replies, _ = self._check_and_log_replies(train_replies, is_train=True)
             if valid_replies:
                 for m in valid_replies:
                     if m.has_content():
+                        # Get Client ID
                         node_id = m.metadata.src_node_id
                         # Get original inputs, original labels and tensor shapes for evaluation
                         config_record = m.content["train_metadata"]
@@ -207,13 +216,12 @@ class CustomFedProx(FedProx):
                         y = train_meta["y"]
                         client_training_labels[node_id]=y
                         num_local_training_steps = train_meta["timestamps"]
-                        log(INFO, "")
-                        log(INFO, "Getting Client Gradients...")
                         # Get trained model parameters 
                         trained_params = m.content.array_records.values()
                         # Get and store recovered gradients
                         client_grad = get_client_grad(trained_params, origin_params, lr, num_local_training_steps) 
                         if node_id in grads_over_time:
+                            # Use a deep copy of the gradients to avoid issues with pytorch's computational graph
                             grad_at_t = [g.detach().clone() for g in client_grad]
                             grads_over_time[node_id].append(grad_at_t)
                         else:

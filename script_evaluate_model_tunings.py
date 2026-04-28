@@ -1,12 +1,16 @@
+"""
+EVALUATE RESULTS FROM:
+
+TUNING EXPERIMENT #1: TUNE MODEL WITH ADAM, FEDAVG
+TUNING EXPERIMENT #2: TUNE MODEL WITH SGD, FEDAVG
+"""
+
 import os
 import re
 import ast
 import json
 import pandas as pd
 
-## 1. Read results
-## 2. Sort by accuracy
-## 3. Print hyperparameters (lr, batchsize, windowsize, local_epochs) & final accuracies
 
 def extract_metric_record(results_str, section):
     """

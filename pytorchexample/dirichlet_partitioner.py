@@ -1,5 +1,6 @@
-#NOTE I have made a small modification to this partitioner, specifically in the load_partition function
-
+"""
+NOTE I have made a small modification to this partitioner, specifically in the load_partition function
+"""
 
 # Copyright 2024 Flower Labs GmbH. All Rights Reserved.
 #

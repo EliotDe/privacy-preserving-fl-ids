@@ -1,5 +1,11 @@
 """
+This class lets the client set DP parameters instead of having them pre-defined. 
 
+NOTE: In the past I have received some divide-by-zero errors. The parent LocalDpMod
+      class throws this error while calculating the clipping norm if the gradient 
+      doesn't update during local training. This can occur when model parameters 
+      explode when training with lots of noise for few rounds. I haven't experienced
+      this in the final experiments but it's something to be aware of. 
 """
 
 from flwr.app import Message, Context
