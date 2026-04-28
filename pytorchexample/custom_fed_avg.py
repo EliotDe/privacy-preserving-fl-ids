@@ -1,4 +1,7 @@
-## TODO: ensure server_params_over_time and gradients_at_timestamps match for the multiple-update attack (all clients must participate or add additional logic)
+"""
+
+"""
+
 import io
 import time
 import torch

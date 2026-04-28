@@ -65,7 +65,9 @@ def get_acc_per_class(round_server_metrics):
         float(round_server_metrics.get("acc_password")),
         float(round_server_metrics.get("acc_backdoor"))
     ] 
-    return accuracy_per_class
+    acc_sum = sum(accuracy_per_class)
+    macro_recall = acc_sum / 10
+    return accuracy_per_class, macro_recall
 
 
     
@@ -91,7 +93,7 @@ def evaluate_result(no_noise_experiment_name: str, noise_experiment_name: str, f
             epsilon = config.get("epsilon")
             num_clients = config.get("num-clients")
             
-            if num_clients != 150 or num_clients != 10:
+            if num_clients not in [150,10]:
                 continue
 
             # Extract server metrics
@@ -100,9 +102,10 @@ def evaluate_result(no_noise_experiment_name: str, noise_experiment_name: str, f
 
             round_server_metrics = extract_metric_record(flwr_str, "ServerApp-side Evaluate Metrics")[rounds]
             
-            accuracy_per_class = get_acc_per_class(round_server_metrics) 
+            accuracy_per_class, macro_recall = get_acc_per_class(round_server_metrics) 
             #runs["No Noise"] = accuracy_per_class
-            baselines[f"No Noise {num_clients} Clients"]= accuracy_per_class
+            baselines[f"No Noise {num_clients} Clients"] = accuracy_per_class
+            print(f"No Noise ({num_clients} clients), macro recall: {macro_recall}")
 
     
     with open(f"{cwd}/results/{noise_experiment_name}.jsonl","r") as f:
@@ -125,7 +128,9 @@ def evaluate_result(no_noise_experiment_name: str, noise_experiment_name: str, f
 
             round_server_metrics = extract_metric_record(flwr_str, "ServerApp-side Evaluate Metrics")[rounds]
             
-            accuracy_per_class = get_acc_per_class(round_server_metrics)
+            accuracy_per_class, macro_recall = get_acc_per_class(round_server_metrics)
+
+            print(f"epsilon={epsilon}, prox-mu={prox_mu} ({num_clients} clients), macro recall: {macro_recall}")
             
             if prox_mu not in runs:
                 runs[prox_mu] = {}

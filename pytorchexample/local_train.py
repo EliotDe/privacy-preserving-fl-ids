@@ -1,6 +1,7 @@
 """
 This contains the ClientApp train methods for normal training and for the inversion attack experiments.
 """
+
 import pickle
 import numpy as np
 from flwr.app import ArrayRecord, Context, Message, MetricRecord, RecordDict, ConfigRecord
@@ -32,10 +33,11 @@ class LocalTrainingNormal(LocalTrainingStrategy):
         )
 
         # Only do this if using noise
-        state_dict = {
-                k: v for k,v in model.state_dict().items()
-                if "num_batches_tracked" not in k
-        }
+        if context.node_config["epsilon"] > 0:
+            state_dict = {
+                    k: v for k,v in model.state_dict().items()
+                    if "num_batches_tracked" not in k
+            }
 
         model_record = ArrayRecord(state_dict)
 

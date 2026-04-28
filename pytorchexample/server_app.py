@@ -157,6 +157,3 @@ def save_result(results: Result, context: Context):
     
     with open(f"{RESULTS_PATH}/{experiment_name}.jsonl", "a") as f:
         f.write(json.dumps(record) + "\n")
-
-
-

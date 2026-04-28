@@ -36,7 +36,7 @@ for epsilon in epsilons:
     with open("pyproject.toml") as f:
         cfg = toml.load(f)
 
-    cfg["tool"]["flwr"]["app"]["config"]["experiment-name"] = "8-attck-across-noise-adam-fedavg"
+    cfg["tool"]["flwr"]["app"]["config"]["experiment-name"] = "8-attck-across-noise-sgd-fedavg"
     cfg["tool"]["flwr"]["app"]["config"]["num-clients"] = 150        # LBFGS is computationally expensive 
     cfg["tool"]["flwr"]["app"]["config"]["shuffle"] = False 
     cfg["tool"]["flwr"]["app"]["config"]["num-server-rounds"] = 2 

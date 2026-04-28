@@ -1,5 +1,0 @@
-toml
-datasets
-scikit-learn
-plotly-6.7.0
-kaleido

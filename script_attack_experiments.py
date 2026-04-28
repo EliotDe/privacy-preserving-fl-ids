@@ -44,6 +44,7 @@ for local_batches in num_batches:
     # LBFGS is computationally expensive especially with two attacks per round and an attack once the strategy is finished -- I can only run for a small number of clients and rounds.
     cfg["tool"]["flwr"]["app"]["config"]["experiment-name"] = "7-attack-across-dimensions-sgd-fedavg" 
     cfg["tool"]["flwr"]["app"]["config"]["num-clients"] = 10        
+    cfg["tool"]["flwr"]["app"]["config"]["num-clients-to-attack"] = 10        
     cfg["tool"]["flwr"]["app"]["config"]["shuffle"] = False 
     cfg["tool"]["flwr"]["app"]["config"]["num-server-rounds"] = 2 
     # Attack Settings
@@ -92,6 +93,7 @@ for bs in batch_sizes:
 
     cfg["tool"]["flwr"]["app"]["config"]["experiment-name"] = "7-attack-across-dimensions-sgd-fedavg" 
     cfg["tool"]["flwr"]["app"]["config"]["num-clients"] = 10        # LBFGS is computationally expensive 
+    cfg["tool"]["flwr"]["app"]["config"]["num-clients-to-attack"] = 10        
     cfg["tool"]["flwr"]["app"]["config"]["shuffle"] = False 
     cfg["tool"]["flwr"]["app"]["config"]["num-server-rounds"] = 2 
     # Attack Settings
@@ -140,6 +142,7 @@ for epochs in num_epochs:
 
     cfg["tool"]["flwr"]["app"]["config"]["experiment-name"] = "7-attack-across-dimensions-sgd-fedavg" 
     cfg["tool"]["flwr"]["app"]["config"]["num-clients"] = 10        # LBFGS is computationally expensive 
+    cfg["tool"]["flwr"]["app"]["config"]["num-clients-to-attack"] = 10        
     cfg["tool"]["flwr"]["app"]["config"]["shuffle"] = False 
     cfg["tool"]["flwr"]["app"]["config"]["num-server-rounds"] = 2 
     # Attack Settings
@@ -188,6 +191,7 @@ for window_size in window_sizes:
 
     cfg["tool"]["flwr"]["app"]["config"]["experiment-name"] = "7-attack-across-dimensions-sgd-fedavg" 
     cfg["tool"]["flwr"]["app"]["config"]["num-clients"] = 10        # LBFGS is computationally expensive 
+    cfg["tool"]["flwr"]["app"]["config"]["num-clients-to-attack"] = 10        
     cfg["tool"]["flwr"]["app"]["config"]["shuffle"] = False 
     cfg["tool"]["flwr"]["app"]["config"]["num-server-rounds"] = 2 
     # Attack Settings

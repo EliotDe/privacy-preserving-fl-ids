@@ -1,3 +1,7 @@
+"""
+
+"""
+
 from flwr.app import Message, Context
 from flwr.clientapp.mod import LocalDpMod
 from flwr.clientapp.typing import ClientAppCallable
