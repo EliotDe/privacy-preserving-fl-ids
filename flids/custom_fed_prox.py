@@ -22,11 +22,11 @@ from flwr.common import log, logger
 from flwr.serverapp import Grid
 from flwr.serverapp.strategy import FedProx, Result
 from flwr.serverapp.strategy.strategy_utils import log_strategy_start_info
-from pytorchexample.task import NN
+from flids.task import NN
 from torch.autograd import grad
-from pytorchexample.attack import attack, fed_avg_attack, evaluate_inversion, get_client_grad 
+from flids.attack import attack, fed_avg_attack, evaluate_inversion, get_client_grad 
 
-PROJECT_NAME = "pytorchexample"
+PROJECT_NAME = "flids"
 
 
 class CustomFedProx(FedProx):

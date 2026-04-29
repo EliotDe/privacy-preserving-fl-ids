@@ -8,13 +8,13 @@ import numpy as np
 from flwr.app import ArrayRecord, Context, Message, MetricRecord, RecordDict
 from flwr.clientapp import ClientApp
 from flwr.clientapp.mod import LocalDpMod
-from pytorchexample.task import NN, load_data
-from pytorchexample.task import test as test_fn
-from pytorchexample.task import train as train_fn
-from pytorchexample.task import inversion_train as inv_train_fn
-from pytorchexample.train_process_metadata import TrainProcessMetadata
-from pytorchexample.local_train import LocalTrainingContext, LocalTrainingNormal, LocalTrainingWithInversion
-from pytorchexample.dynamic_dp_mod import DynamicDpMod
+from flids.task import NN, load_data
+from flids.task import test as test_fn
+from flids.task import train as train_fn
+from flids.task import inversion_train as inv_train_fn
+from flids.train_process_metadata import TrainProcessMetadata
+from flids.local_train import LocalTrainingContext, LocalTrainingNormal, LocalTrainingWithInversion
+from flids.dynamic_dp_mod import DynamicDpMod
 
 # Flower ClientApp
 app = ClientApp()

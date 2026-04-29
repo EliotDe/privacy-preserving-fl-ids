@@ -1,7 +1,7 @@
 """
 BEFORE RUNNING THIS SCRIPT ENSURE YOU HAVE DONE THE FOLLOWING:
-    - In pytorchexample/task.py the model should be using batch norm layers
-    - In pytorchexample/client_app.py the train method should NOT be decorated with a noise modifier
+    - In flids/task.py the model should be using batch norm layers
+    - In flids/client_app.py the train method should NOT be decorated with a noise modifier
 
 EXPERIMENT #5: BASELINE FOR VARYING NOISE ACROSS CLIENTS: ADAM -- BATCH NORM -- NO ATTACK
     - fixed variables: Adam Optimizer (all other variables except for num_clients are fixed as well)

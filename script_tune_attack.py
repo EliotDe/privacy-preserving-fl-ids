@@ -1,7 +1,7 @@
 """
 BEFORE RUNNING THIS SCRIPT ENSURE YOU HAVE DONE THE FOLLOWING:
-    - In pytorchexample/task.py batch norm layer ARE in the NN class and the method NN.forward()
-    - In pytorchexample/client_app.py you have removed the noise modifier from the training decorator 
+    - In flids/task.py batch norm layer ARE in the NN class and the method NN.forward()
+    - In flids/client_app.py you have removed the noise modifier from the training decorator 
 
 EXPERIMENT #4: TUNE ATTACK -- NO BATCH NORM -- NO NOISE
     - Fixed variables:

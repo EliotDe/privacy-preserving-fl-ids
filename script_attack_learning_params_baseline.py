@@ -1,3 +1,10 @@
+"""
+BASELINE FOR:
+
+EXPERIMENT #7: RECOVERABLE INFORMATION FOR DIFFERENT TRAINING DATA DIMENSIONS
+    - Fixed variables: Fl optimizer - SGD (all variables apart from batch size, local_batches and local_epochs are fixed)
+"""
+
 import toml 
 import json
 import re

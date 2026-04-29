@@ -1,7 +1,7 @@
 """
 BEFORE RUNNING THIS SCRIPT ENSURE YOU HAVE DONE THE FOLLOWING:
-    - In pytorchexample/task.py the model should NOT be using batch norm layers
-    - In pytorchexample/client_app.py the train method SHOULD be decorated with a noise modifier
+    - In flids/task.py the model should NOT be using batch norm layers
+    - In flids/client_app.py the train method SHOULD be decorated with a noise modifier
 
 EXPERIMENT #5: VARY NOISE ACROSS CLIENT NUMBER -- NO BATCH NORM -- NO ATTACK
     - fixed variables: Adam Optimizer (I have already run the experiment for sgd and batch norm)

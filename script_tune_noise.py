@@ -1,7 +1,7 @@
 """
 BEFORE RUNNING THIS SCRIPT ENSURE YOU HAVE DONE THE FOLLOWING:
-    - In pytorchexample/task.py you have removed the batch norm layer in NN and the method NN.forward()
-    - In pytorchexample/client_app.py you have added a noise modifier to the training decorator 
+    - In flids/task.py you have removed the batch norm layer in NN and the method NN.forward()
+    - In flids/client_app.py you have added a noise modifier to the training decorator 
     - Ensure you are using Adam (as the note mentions this has been run for sgd already) 
 
 EXPERIMENT #3: TUNE NOISE WITHOUT BATCH NORM - USING ADAM

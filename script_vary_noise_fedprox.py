@@ -1,7 +1,7 @@
 """
 BEFORE RUNNING THIS SCRIPT ENSURE YOU HAVE DONE THE FOLLOWING:
-    - In pytorchexample/task.py the model should NOT be using batch norm layers
-    - In pytorchexample/client_app.py the train method SHOULD be decorated with a noise modifier
+    - In flids/task.py the model should NOT be using batch norm layers
+    - In flids/client_app.py the train method SHOULD be decorated with a noise modifier
     - Change the name of processed_network_ransom.csv to processed_network.csv and processed_network.csv to whatever you like.
 
 EXPERIMENT #6: HOW DOES FEDPROX MITIGATE BIAS ACROSS NOISE -- 150 CLIENTS -- NO BATCH NORM -- ADAM

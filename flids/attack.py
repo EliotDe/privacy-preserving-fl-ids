@@ -10,7 +10,7 @@ import torch
 import random
 import torch.nn.functional as F
 from flwr.app import ArrayRecord, ConfigRecord, Message, MetricRecord
-from pytorchexample.task import NN
+from flids.task import NN
 from torch.autograd import grad
 
 def soft_label_cross_entropy(pred, true):

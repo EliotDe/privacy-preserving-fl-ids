@@ -10,7 +10,7 @@ from datasets import Dataset
 from .dirichlet_partitioner import DirichletPartitioner 
 from flwr_datasets.common.typing import NDArrayFloat
 from flwr_datasets.partitioner.partitioner import Partitioner
-from pytorchexample.data_utils import set_windows
+from flids.data_utils import set_windows
 
 class TemporalPartitioner(Partitioner):
     """

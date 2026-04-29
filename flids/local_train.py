@@ -9,11 +9,11 @@ import numpy as np
 from flwr.app import ArrayRecord, Context, Message, MetricRecord, RecordDict, ConfigRecord
 from abc import ABC, abstractmethod
 from dataclasses import asdict
-from pytorchexample.task import NN, load_data
-from pytorchexample.task import test as test_fn
-from pytorchexample.task import train as train_fn
-from pytorchexample.task import inversion_train as inv_train_fn
-from pytorchexample.train_process_metadata import TrainProcessMetadata
+from flids.task import NN, load_data
+from flids.task import test as test_fn
+from flids.task import train as train_fn
+from flids.task import inversion_train as inv_train_fn
+from flids.train_process_metadata import TrainProcessMetadata
 
 class LocalTrainingStrategy(ABC):
     @abstractmethod

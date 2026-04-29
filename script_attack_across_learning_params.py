@@ -1,7 +1,7 @@
 """
 BEFORE RUNNING THIS SCRIPT ENSURE YOU HAVE DONE THE FOLLOWING:
-    - In pytorchexample/task.py the model should be using batch norm layers
-    - In pytorchexample/client_app.py the train method should NOT be decorated with a noise modifier
+    - In flids/task.py the model should be using batch norm layers
+    - In flids/client_app.py the train method should NOT be decorated with a noise modifier
 
 EXPERIMENT #7: RECOVERABLE INFORMATION FOR DIFFERENT TRAINING DATA DIMENSIONS
     - Fixed variables: Fl optimizer - SGD (all variables apart from batch size, local_batches and local_epochs are fixed)

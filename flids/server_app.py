@@ -1,4 +1,4 @@
-"""pytorchexample: A Flower / PyTorch app."""
+"""flids: A Flower / PyTorch app."""
 
 import json
 import torch
@@ -7,9 +7,9 @@ from flwr.app import ArrayRecord, ConfigRecord, Context, MetricRecord
 from flwr.serverapp import Grid, ServerApp
 from flwr.serverapp.strategy import FedAvg, FedProx, Result
 from sklearn.metrics import confusion_matrix, f1_score
-from pytorchexample.task import NN, load_centralized_dataset, test, get_class_names_from_labels, get_class_names
-from pytorchexample.custom_fed_avg import CustomFedAvg
-from pytorchexample.custom_fed_prox import CustomFedProx
+from flids.task import NN, load_centralized_dataset, test, get_class_names_from_labels, get_class_names
+from flids.custom_fed_avg import CustomFedAvg
+from flids.custom_fed_prox import CustomFedProx
 
 NUM_FEATURES=34
 WINDOW_SIZE=20

@@ -21,8 +21,8 @@ from .temporal_partitioner import TemporalPartitioner
 from torch.utils.data import Dataset,DataLoader
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.model_selection import StratifiedShuffleSplit, train_test_split
-from pytorchexample.train_process_metadata import TrainProcessMetadata
-from pytorchexample.data_utils import set_windows
+from flids.train_process_metadata import TrainProcessMetadata
+from flids.data_utils import set_windows
 #from torchvision.transforms import Compose, Normalize, ToTensor
 
 THRESHOLD_FOR_UNRELATED_S = 600   # At what difference in seconds do we consider two records temporally unrelated
