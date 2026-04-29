@@ -3,9 +3,9 @@ requires = [ "hatchling",]
 build-backend = "hatchling.build"
 
 [project]
-name = "quickstart-pytorch"
+name = "flids"
 version = "1.0.0"
-description = "Federated Learning with PyTorch and Flower (Quickstart Example)"
+description = "Privacy-Preserving FL-based Intrusion Detection Experiments"
 license = "Apache-2.0"
 dependencies = [ "flwr[simulation]>=1.24.0", "flwr-datasets[vision]>=0.5.0", "torch==2.8.0", "torchvision==0.23.0",]
 
@@ -13,35 +13,35 @@ dependencies = [ "flwr[simulation]>=1.24.0", "flwr-datasets[vision]>=0.5.0", "to
 publisher = "flwrlabs"
 
 [tool.flwr.app.components]
-serverapp = "pytorchexample.server_app:app"
-clientapp = "pytorchexample.client_app:app"
+serverapp = "flids.server_app:app"
+clientapp = "flids.client_app:app"
 
 [tool.flwr.app.config]
 experiment-name = "test"
 num-clients = 10
-run-inversion = true
+run-inversion = true 
 seed = 2
-num-server-rounds = 2
+num-server-rounds = 10 
 fraction-evaluate = 0.5
-optimizer = "sgd"
+optimizer = "adam"
 learning-rate = 0.001
 weight-decay = 0
-prox-mu = 0
-local-epochs = 1
+prox-mu = 0.001
+local-epochs = 1 
 local-batches = 1
-batch-size = 1
-shuffle = false
+batch-size = 1 
+shuffle = false 
 window-size = 20
-epsilon = 0
-delta = 0
-clipping_norm = 0
-sensitivity = 0
+epsilon = 10 
+delta = 0.00001
+clipping_norm = 2 
+sensitivity = 0.5
 attack-lr = 1.0
 attack-rounds = 25
 attack-max-iter = 5
 attack-history-size = 10
 attack-reg = 0
-num-clients-to-attack = 10
+num-clients-to-attack = 2 
 
 [tool.hatch.build.targets.wheel]
 packages = [ ".",]

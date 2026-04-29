@@ -14,6 +14,7 @@ venv/
 dist/
 build/
 pytorchexample/__pycache__/
+flids/__pycache__/
 
 # Data
 data/
@@ -29,6 +30,7 @@ partitioners/
 # Logs
 *.log
 results/
+old-results/
 
 # Config
 experiment_config.yaml

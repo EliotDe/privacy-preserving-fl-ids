@@ -35,11 +35,16 @@ class LocalTrainingNormal(LocalTrainingStrategy):
         )
 
         # Only do this if using noise
-        if context.node_config["epsilon"] > 0:
+        if context.run_config["epsilon"] > 0:
             state_dict = {
                     k: v for k,v in model.state_dict().items()
                     if "num_batches_tracked" not in k
             }
+        else:
+            state_dict = {
+                    k: v for k,v in model.state_dict().items()
+            }
+
 
         model_record = ArrayRecord(state_dict)
 
@@ -52,12 +57,12 @@ class LocalTrainingNormal(LocalTrainingStrategy):
 
 
         # Calculate Model Update and l2-norm
-        trained_model_ndarrays = next(iter(content.array_records.values())).to_numpy_ndarrays()
-        original_model_ndarrays = next(iter(msg.content.array_records.values())).to_numpy_ndarrays()
-        model_update = [np.subtract(x,y) for (x,y) in zip(trained_model_ndarrays, original_model_ndarrays, strict=True)]
-        norms = [np.linalg.norm(array.flat) for array in model_update] 
-        norm = float(np.sqrt(sum([norm**2 for norm in norms])))
-        print(f"L2-Norm of Client update: {norm}")
+        #trained_model_ndarrays = next(iter(content.array_records.values())).to_numpy_ndarrays()
+        #original_model_ndarrays = next(iter(msg.content.array_records.values())).to_numpy_ndarrays()
+        #model_update = [np.subtract(x,y) for (x,y) in zip(trained_model_ndarrays, original_model_ndarrays, strict=True)]
+        #norms = [np.linalg.norm(array.flat) for array in model_update] 
+        #norm = float(np.sqrt(sum([norm**2 for norm in norms])))
+        #print(f"L2-Norm of Client update: {norm}")
 
         return Message(content=content, reply_to=msg)
 

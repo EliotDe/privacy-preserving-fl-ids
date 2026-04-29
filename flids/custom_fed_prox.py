@@ -90,6 +90,7 @@ class CustomFedProx(FedProx):
         attack_max_iter = train_config["attack_max_iter"]
         attack_history_size = train_config["attack_history_size"]
         shuffle_train = train_config["shuffle"]
+        num_clients_to_attack = train_config["num_clients_to_attack"]
         seed = train_config["seed"]
 
         evaluate_config = ConfigRecord() if evaluate_config is None else evaluate_config
@@ -120,6 +121,7 @@ class CustomFedProx(FedProx):
 
         
         # This will be used to evaluate the inversion attack
+        clients_to_attack = []
         for current_round in range(1, num_rounds + 1):
             log(INFO, "")
             log(INFO, "[ROUND %s/%s]", current_round, num_rounds)
@@ -202,10 +204,18 @@ class CustomFedProx(FedProx):
             # Get Clients Responses
             valid_replies, _ = self._check_and_log_replies(train_replies, is_train=True)
             if valid_replies:
+                num_clients_attacked = 0
                 for m in valid_replies:
                     if m.has_content():
                         # Get Client ID
                         node_id = m.metadata.src_node_id
+                        # Sample clients
+                        if len(clients_to_attack) < num_clients_to_attack and node_id not in clients_to_attack:
+                            clients_to_attack.append(node_id)
+
+                        if node_id not in clients_to_attack:
+                            continue
+
                         # Get original inputs, original labels and tensor shapes for evaluation
                         config_record = m.content["train_metadata"]
                         metadata_bytes = config_record["meta"]
@@ -240,7 +250,7 @@ class CustomFedProx(FedProx):
                                 label_shape=train_meta["y_shape"],
                                 num_classes=10,
                                 #lr=attack_lr,
-                                #rounds=attack_rounds,
+                                rounds=attack_rounds,
                                 max_iter = attack_max_iter,
                                 history_size = attack_history_size,
                                 reg_coeff=attack_reg,
@@ -273,6 +283,11 @@ class CustomFedProx(FedProx):
                         all_dlg_cossim_mse.append(dlg_cossim_mse)
                         all_dlg_cossim_pcc.append(dlg_cossim_pcc)
                         recovery_stats_per_client_dlg[node_id] = (dlg_cossim_mse, dlg_cossim_pcc) 
+
+                        num_clients_attacked += 1
+
+                        if num_clients_attacked >= num_clients_to_attack:
+                            break
 
 
             dlg_mse_avg = sum(all_dlg_mse) / len(all_dlg_mse)
